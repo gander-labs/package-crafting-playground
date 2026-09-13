@@ -66,9 +66,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      # npm's OIDC trusted publishing always attaches a signed provenance
+      # attestation (Sigstore) on its own — no --provenance flag needed.
       - name: release-it
         id: release-it
-        run: bunx release-it ${{ inputs.bump }} --ci ${{ vars.NPM_PROVENANCE == 'true' && '--npm.publishArgs=--provenance' || '' }}
+        run: bunx release-it ${{ inputs.bump }} --ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

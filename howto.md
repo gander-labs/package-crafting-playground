@@ -79,11 +79,13 @@ steps:
 token ends up in `.npmrc`. npm CLI ≥ 11.5.1 is required (Node 26 ships a
 recent-enough npm). No `NODE_AUTH_TOKEN` secret exists or is needed.
 
-Set the repo variable `NPM_PROVENANCE` to `true` to have the workflow attach
-a [provenance attestation](https://docs.npmjs.com/generating-provenance-statements)
-via `--npm.publishArgs=--provenance` — a signed statement (via Sigstore,
-using the same OIDC token) proving the package was built from this exact
-repo/workflow/commit.
+Trusted publishing also attaches a
+[provenance attestation](https://docs.npmjs.com/generating-provenance-statements)
+automatically — a signed statement (via Sigstore, using the same OIDC token)
+proving the package was built from this exact repo/workflow/commit. No flag
+or repo variable turns this on; npm does it on every OIDC-authenticated
+publish. `package.json`'s `repository.url` must match the repo the workflow
+runs in, or npm rejects the publish with a provenance validation error.
 
 ---
 
@@ -180,6 +182,7 @@ npx --yes @gander-labs/package-crafting-playground@latest --version
 | `npm ERR! 403 … not allowed to publish` | The `@gander-labs` scope/package is owned by a different npm account, or the Trusted Publisher link is missing/wrong. Confirm the name is `@gander-labs/package-crafting-playground`. |
 | `EPUBLISHCONFLICT` / `cannot publish over previously published version` | That version already exists. Bump again (run the workflow with `patch`). |
 | `npm error code ENEEDAUTH` in CI | OIDC exchange didn't trigger — check the job has `permissions: id-token: write` and `registry-url` is set on `setup-node`. |
+| `npm error 422 … Error verifying sigstore provenance bundle: … package.json: "repository.url" is "…", expected to match "https://github.com/…"` | `package.json`'s `repository.url` is missing or doesn't match this repo. Trusted publishing always attaches provenance, and npm validates it against `repository`. |
 | `npm error "provenance" is only supported when publishing packages with public access` | Shouldn't happen — `publishConfig.access: "public"` is already set — but if it does, that's the real requirement to check. |
 | Need to publish from somewhere OIDC doesn't reach (local machine, other CI) | Fall back to a classic access token: mint one on npmjs.com, `gh secret set NODE_AUTH_TOKEN`, and add it to the `release-it` step's `env` in `release.yml`. |
 

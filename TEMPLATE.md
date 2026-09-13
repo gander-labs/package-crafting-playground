@@ -8,7 +8,9 @@ rename, what to configure, and which pieces are optional.
 The name `package-crafting-playground` (and the full path `gander-labs/package-crafting-playground`) shows
 up in several places and needs to be changed everywhere:
 
-- `package.json`: the `"name"` field and the outfiles in the
+- `package.json`: the `"name"` field, `"repository.url"` (must match the new
+  repo exactly — npm's OIDC trusted publishing validates provenance against
+  it and rejects the publish otherwise), and the outfiles in the
   `"build:bin:bun"` / `"build:bin:node"` / `"build:bin:deno"` scripts
   (`dist/package-crafting-playground-bun`, `dist/package-crafting-playground-node`, `dist/package-crafting-playground-deno`)
 - `README.md`: the heading (project title)
@@ -175,8 +177,8 @@ zakładki:
 - **Secrets** -> **New repository secret** — wartości szyfrowane,
   niewidoczne w logach (np. `NODE_AUTH_TOKEN`, patrz howto.md).
 - **Variables** -> **New repository variable** — jawny tekst, widoczny w
-  UI i logach, do wartości nie-sekretnych (np. `NPM_PROVENANCE`,
-  `ARTIFACT_RETENTION_DAYS` używane w `code.yml`/`release.yml`).
+  UI i logach, do wartości nie-sekretnych (np. `ARTIFACT_RETENTION_DAYS`
+  używane w `code.yml`).
 
 Ten sam ekran ma też zakładki **Environments** (sekrety/zmienne scope'owane
 per środowisko, z opcjonalnym required reviewers) i **Codespaces**, jeśli
@@ -211,6 +213,11 @@ publishes to). Requires `permissions: id-token: write` on the release job
 (needed to trigger the OIDC exchange, even though no token ends up in
 `.npmrc`), the Trusted Publisher configured on the npmjs.com package
 settings page, and npm CLI ≥ 11.5.1 (Node 26 ships new enough).
+
+Every OIDC-authenticated publish also gets a signed provenance attestation
+(Sigstore) automatically — no flag or repo variable needed. npm validates it
+against `package.json`'s `repository.url`, which must match this repo
+exactly or the publish is rejected with a 422.
 
 ### Fallback: classic token auth
 
