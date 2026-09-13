@@ -3,6 +3,10 @@
   "version": "0.3.5",
   "license": "AGPL-3.0-only",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gander-labs/package-crafting-playground.git"
+  },
   "bin": {
     "package-crafting-playground": "dist/package-crafting-playground.js"
   },
