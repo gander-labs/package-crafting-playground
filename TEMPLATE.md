@@ -184,9 +184,9 @@ projekt tego kiedyś potrzebuje.
 
 ## Publishing to npm
 
-See [howto.md](howto.md) for the step-by-step setup (access token, repo
-secret, what the release workflow does). The rest of this section covers
-what changes per new project, and an alternative worth knowing about.
+See [howto.md](howto.md) for the step-by-step setup (Trusted Publisher link,
+what the release workflow does). The rest of this section covers what
+changes per new project, and a fallback worth knowing about.
 
 ### Provisioning a new project
 
@@ -195,27 +195,35 @@ one's:
 
 - A **package scope/name** on npmjs.com that isn't already taken
   (`@gander-labs/<name>`, see the rename checklist above).
-- Its own `NODE_AUTH_TOKEN` secret (howto.md steps 2-3) — never reuse a
-  token across projects; if one leaks or gets rotated, the blast radius
-  should be one repo.
+- Its own Trusted Publisher link on npmjs.com (howto.md step 2), pointing at
+  the new repo and its `release.yml` — this is per-package config on npm's
+  side, not something that lives in this repo.
 
-### OIDC trusted publishing — an alternative to `NODE_AUTH_TOKEN`
+### npm's OIDC trusted publishing (what this project uses)
 
 npm's [Trusted Publishing][1] (GA since July 2025) lets a GitHub Actions
 workflow publish without any stored token at all: npm exchanges the
 workflow's OIDC identity for a short-lived credential. It removes the
-"long-lived secret sitting in repo settings" risk entirely, and works
-against the public registry this project already publishes to
-(`registry.npmjs.org`). Not wired up here yet — to switch: add
-`permissions: id-token: write` to the release job, configure the Trusted
-Publisher on the npmjs.com package settings page, and drop the
-`NODE_AUTH_TOKEN` secret and `registry-url` input entirely (npm CLI ≥
-11.5.1 required).
+"long-lived secret sitting in repo settings" risk entirely, and only works
+against the public registry (`registry.npmjs.org`, which this project
+publishes to). Requires `permissions: id-token: write` on the release job
+(already set, shared with JSR's publish), `registry-url` on `setup-node`
+(needed to trigger the OIDC exchange, even though no token ends up in
+`.npmrc`), the Trusted Publisher configured on the npmjs.com package
+settings page, and npm CLI ≥ 11.5.1 (Node 26 ships new enough).
+
+### Fallback: classic token auth
+
+If a new project needs to publish from somewhere OIDC can't reach (a local
+machine, non-GitHub CI), fall back to a `NODE_AUTH_TOKEN` secret: mint a
+token on npmjs.com, `gh secret set NODE_AUTH_TOKEN`, and add
+`NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}` to the `release-it` step's
+`env` in `release.yml`.
 
 ### Dry-run testing
 
-Before wiring up the real token (or when debugging a publish failure),
-check what would be published without actually publishing:
+Before a real publish (or when debugging a publish failure), check what
+would be published without actually publishing:
 
 ```bash
 bun run build

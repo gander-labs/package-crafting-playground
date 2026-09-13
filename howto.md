@@ -1,7 +1,8 @@
 # How to publish `@gander-labs/package-crafting-playground` to npm
 
-Step-by-step: generate an npm access token, store it as a repo secret, and run
-the release workflow that publishes to <https://registry.npmjs.org/>.
+Publishing to <https://registry.npmjs.org/> uses npm's
+[Trusted Publishing][1]: the release workflow exchanges its GitHub Actions
+OIDC identity for a short-lived npm credential, no stored token required.
 
 - **Registry:** `https://registry.npmjs.org/`
 - **Package:** `@gander-labs/package-crafting-playground`
@@ -12,61 +13,30 @@ the release workflow that publishes to <https://registry.npmjs.org/>.
 ## 1. Prerequisites
 
 - An npmjs.com account with publish access to the `@gander-labs` scope.
-- `npm` available locally (only to mint the token).
-- Push access to `gander-labs/package-crafting-playground` and permission to manage its
-  Actions secrets. The [`gh`](https://cli.github.com/) CLI is optional but
-  used in the examples.
+- Push access to `gander-labs/package-crafting-playground` and permission to
+  manage its Actions secrets/variables, if you ever need to fall back to a
+  token (see below).
 
 ---
 
-## 2. Generate an npm access token
+## 2. One-time setup: link the Trusted Publisher
 
-Create a **Granular Access Token** (or classic **Automation** token) scoped to
-publish `@gander-labs/package-crafting-playground`:
+On <https://www.npmjs.com/>, open the package settings (or, for a first
+publish, set this up right after the first manual `npm publish`):
 
-1. <https://www.npmjs.com/> → avatar → **Access Tokens** → **Generate New Token**
-   → **Granular Access Token**.
-2. Set **Packages and scopes** → **Read and write**, restricted to this
-   package (or the `@gander-labs` scope).
-3. No expiration is needed for a CI secret, but rotate it periodically.
+1. Package → **Settings** → **Trusted Publisher**.
+2. Provider: **GitHub Actions**.
+3. Repository: `gander-labs/package-crafting-playground`.
+4. Workflow filename: `release.yml`.
+5. Environment: leave blank (the job doesn't use a GitHub Environment).
 
-Automation tokens (classic UI) work the same way and bypass 2FA prompts,
-which is what a non-interactive CI run needs.
-
-### Verify the token works
-
-```bash
-npm whoami --//registry.npmjs.org/:_authToken=<TOKEN>
-```
+No secret is created or stored anywhere. This link is what lets
+`registry.npmjs.org` trust the OIDC token GitHub Actions presents at publish
+time.
 
 ---
 
-## 3. Store the token as the `NODE_AUTH_TOKEN` repo secret
-
-The workflow reads `${{ secrets.NODE_AUTH_TOKEN }}`.
-
-### With `gh`
-
-```bash
-gh secret set NODE_AUTH_TOKEN -R gander-labs/package-crafting-playground
-# paste the token when prompted (no echo)
-
-gh secret list -R gander-labs/package-crafting-playground   # confirm NODE_AUTH_TOKEN is listed
-```
-
-### With the web UI
-
-`Settings` → `Secrets and variables` → `Actions` → `New repository secret`
-
-- **Name:** `NODE_AUTH_TOKEN`
-- **Secret:** the token from step 2
-
-No other secret is needed. `GITHUB_TOKEN` is provided automatically by
-Actions.
-
----
-
-## 4. How the workflow is wired (already committed)
+## 3. How the workflow is wired (already committed)
 
 **`package.json`**
 
@@ -88,37 +58,36 @@ to private otherwise.
 **`.github/workflows/release.yml`**
 
 ```yaml
-- name: Setup Node
-  uses: actions/setup-node@…
-  with:
-    node-version: 26
-    registry-url: https://registry.npmjs.org
+permissions:
+  contents: write
+  id-token: write   # lets npm (and JSR) exchange this for a short-lived credential
 
-- name: release-it
-  run: bunx release-it ${{ inputs.bump }} --ci
-  env:
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}     # <- the token from step 3
+steps:
+  - name: Setup Node
+    uses: actions/setup-node@…
+    with:
+      node-version: 26
+      registry-url: https://registry.npmjs.org
+
+  - name: release-it
+    run: bunx release-it ${{ inputs.bump }} --ci
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-`registry-url` makes `setup-node` write a job-local `.npmrc`:
-
-```
-//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
-```
-
-so `npm publish` (invoked by release-it) authenticates with `NODE_AUTH_TOKEN`.
+`registry-url` is required for npm's OIDC exchange to trigger, even though no
+token ends up in `.npmrc`. npm CLI ≥ 11.5.1 is required (Node 26 ships a
+recent-enough npm). No `NODE_AUTH_TOKEN` secret exists or is needed.
 
 Set the repo variable `NPM_PROVENANCE` to `true` to have the workflow attach
 a [provenance attestation](https://docs.npmjs.com/generating-provenance-statements)
 via `--npm.publishArgs=--provenance` — a signed statement (via Sigstore,
-using the job's GitHub Actions OIDC token, the same `id-token: write`
-permission JSR's publish uses) proving the package was built from this exact
-repo/workflow/commit. Fully supported on the public npm registry.
+using the same OIDC token) proving the package was built from this exact
+repo/workflow/commit.
 
 ---
 
-## 5. Run a release
+## 4. Run a release
 
 1. GitHub → **Actions** → **Release** → **Run workflow**.
 2. Choose the version bump: `patch`, `minor`, or `major`.
@@ -126,26 +95,25 @@ repo/workflow/commit. Fully supported on the public npm registry.
 
 The job then:
 
-1. `Check publish token` — fails fast if `NODE_AUTH_TOKEN` is missing,
-2. runs the `Code` workflow (lint / typecheck / tests),
-3. `Build and verify artifacts` — `bun run build` and smoke-test all three
+1. runs the `Code` workflow (lint / typecheck / tests),
+2. `Build and verify artifacts` — `bun run build` and smoke-test all three
    outputs by actually running `--version` (sanity check before any version
    bump),
-4. `npm version` bumps `package.json`, then release-it commits it as
+3. `npm version` bumps `package.json`, then release-it commits it as
    `chore: release vX.Y.Z` and tags `vX.Y.Z`,
-5. `after:bump` hook syncs `jsr.json`'s version to match and re-runs
+4. `after:bump` hook syncs `jsr.json`'s version to match and re-runs
    `bun run build`,
-6. `npm publish` → `@gander-labs/package-crafting-playground@X.Y.Z` to npm,
-7. `git push` of the commit + tag,
-8. `deno publish` → `@gander-labs/package-crafting-playground@X.Y.Z` to JSR (OIDC, no
+5. `npm publish` (OIDC trusted publishing) → `@gander-labs/package-crafting-playground@X.Y.Z` to npm,
+6. `git push` of the commit + tag,
+7. `deno publish` → `@gander-labs/package-crafting-playground@X.Y.Z` to JSR (OIDC, no
    token — see [Publishing to JSR](#publishing-to-jsr) below),
-9. creates a GitHub Release with the three compiled binaries attached.
+8. creates a GitHub Release with the three compiled binaries attached.
 
-If step 6 fails, release-it rolls back steps 4–5 (no tag, no commit pushed).
+If step 5 fails, release-it rolls back steps 3–4 (no tag, no commit pushed).
 
 ---
 
-## 6. Verify
+## 5. Verify
 
 ```bash
 npm view @gander-labs/package-crafting-playground version
@@ -204,16 +172,16 @@ npx --yes @gander-labs/package-crafting-playground@latest --version
 
 ---
 
-## 7. Troubleshooting
+## 6. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
-| `npm error code ENEEDAUTH` / `need auth This command requires you to be logged in` | `NODE_AUTH_TOKEN` secret is **not set** (empty `NODE_AUTH_TOKEN`). Add it (step 3). The workflow's "Check publish token" step now fails fast with this message. |
-| `npm ERR! 401 Unauthorized` on publish | `NODE_AUTH_TOKEN` is set but wrong or rotated. Re-mint (step 2), re-set the secret (step 3). |
-| `npm ERR! 403 … not allowed to publish` | The `@gander-labs` scope/package is owned by a different npm account, or the token lacks publish access to it. Confirm the name is `@gander-labs/package-crafting-playground` and the token's scope grants. |
+| `npm error the given OIDC or trusted publisher config could not be validated` | Trusted Publisher on npmjs.com doesn't match this repo/workflow filename exactly, or hasn't been linked yet (step 2). |
+| `npm ERR! 403 … not allowed to publish` | The `@gander-labs` scope/package is owned by a different npm account, or the Trusted Publisher link is missing/wrong. Confirm the name is `@gander-labs/package-crafting-playground`. |
 | `EPUBLISHCONFLICT` / `cannot publish over previously published version` | That version already exists. Bump again (run the workflow with `patch`). |
-| Works locally, fails in CI | Local uses your `~/.npmrc`; CI uses `NODE_AUTH_TOKEN`. The CI token must be valid independently. |
+| `npm error code ENEEDAUTH` in CI | OIDC exchange didn't trigger — check the job has `permissions: id-token: write` and `registry-url` is set on `setup-node`. |
 | `npm error "provenance" is only supported when publishing packages with public access` | Shouldn't happen — `publishConfig.access: "public"` is already set — but if it does, that's the real requirement to check. |
+| Need to publish from somewhere OIDC doesn't reach (local machine, other CI) | Fall back to a classic access token: mint one on npmjs.com, `gh secret set NODE_AUTH_TOKEN`, and add it to the `release-it` step's `env` in `release.yml`. |
 
 ---
 
@@ -223,6 +191,9 @@ npx --yes @gander-labs/package-crafting-playground@latest --version
 npm login
 bun run build
 npm publish            # registry is npm's default (registry.npmjs.org);
-                        # no --provenance here — it needs a supported CI's
-                        # OIDC token (GitHub Actions), not a local login
+                        # OIDC trusted publishing only works from a
+                        # supported CI (GitHub Actions), so a local publish
+                        # authenticates via your npm login instead
 ```
+
+[1]: https://docs.npmjs.com/trusted-publishers/

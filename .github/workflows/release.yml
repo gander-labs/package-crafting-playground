@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write # for JSR's OIDC-based publish (no token secret needed)
+      id-token: write # for npm's and JSR's OIDC-based publish (no token secret needed)
     steps:
       # release-it pushes the version-bump commit and tag, so the checkout
       # must keep its credentials. This job uploads no artifacts.
@@ -39,7 +39,8 @@ jobs:
         with:
           bun-version: "1.4.0"
       # release-it shells out to `npm version` to bump package.json, so pin Node.
-      # registry-url writes an .npmrc so `npm publish` picks up NODE_AUTH_TOKEN.
+      # registry-url is required for npm's OIDC trusted publishing to kick in,
+      # even though no token is written to .npmrc. npm >= 11.5.1 required.
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -65,23 +66,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Check publish token
-        env:
-          # ponytail: falls back to the retired NPM_TOKEN secret until it's
-          # rotated into NODE_AUTH_TOKEN; drop the fallback once that's done.
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN || secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::error::NODE_AUTH_TOKEN secret is not set - npm publish would fail with ENEEDAUTH. Add it under Settings -> Secrets and variables -> Actions (see howto.md step 3)."
-            exit 1
-          fi
-
       - name: release-it
         id: release-it
         run: bunx release-it ${{ inputs.bump }} --ci ${{ vars.NPM_PROVENANCE == 'true' && '--npm.publishArgs=--provenance' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN || secrets.NPM_TOKEN }}
 
       # Uses GitHub Actions OIDC — no token needed, provided the package on
       # jsr.io has been linked to this repo's Actions workflow beforehand
