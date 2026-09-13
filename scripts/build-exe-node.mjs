@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Builds dist/new-app-node: a Node.js Single Executable Application (SEA).
+// Builds dist/package-crafting-playground-node: a Node.js Single Executable Application (SEA).
 // Bun is used only as a bundler here (--target node --format cjs), so its
 // output has no Bun runtime in it — the final binary is a copy of the local
 // `node` executable with the bundled app injected via postject.
@@ -14,10 +14,10 @@ import {
 import { inject } from "postject";
 
 const DIST = "dist";
-const BUNDLE = `${DIST}/new-app-node.cjs`;
-const BLOB = `${DIST}/new-app-node.blob`;
-const CONFIG = `${DIST}/new-app-node.sea-config.json`;
-const OUTPUT = `${DIST}/new-app-node`;
+const BUNDLE = `${DIST}/package-crafting-playground-node.cjs`;
+const BLOB = `${DIST}/package-crafting-playground-node.blob`;
+const CONFIG = `${DIST}/package-crafting-playground-node.sea-config.json`;
+const OUTPUT = `${DIST}/package-crafting-playground-node`;
 const SENTINEL_FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
 
 execFileSync(

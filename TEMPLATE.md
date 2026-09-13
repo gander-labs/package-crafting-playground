@@ -1,22 +1,22 @@
 # Using this template
 
-Instructions for turning `new-bun-app` into a real project: what to
+Instructions for turning `package-crafting-playground` into a real project: what to
 rename, what to configure, and which pieces are optional.
 
 ## Turning this template into a new project
 
-The name `new-bun-app` (and the full path `gander-labs/new-bun-app`) shows
+The name `package-crafting-playground` (and the full path `gander-labs/package-crafting-playground`) shows
 up in several places and needs to be changed everywhere:
 
 - `package.json`: the `"name"` field and the outfiles in the
   `"build:bin:bun"` / `"build:bin:node"` / `"build:bin:deno"` scripts
-  (`dist/new-app-bun`, `dist/new-app-node`, `dist/new-app-deno`)
+  (`dist/package-crafting-playground-bun`, `dist/package-crafting-playground-node`, `dist/package-crafting-playground-deno`)
 - `README.md`: the heading (project title)
-- `update.ts`: the `REPO` constant (`gander-labs/new-bun-app`) and the
-  `ASSET_NAME` constant (already runtime-aware — `new-app-bun` /
-  `new-app-node` / `new-app-deno` — only the base name needs renaming)
-- `.release-it.json`: `github.assets` (`dist/new-app-bun`,
-  `dist/new-app-node`, `dist/new-app-deno`)
+- `update.ts`: the `REPO` constant (`gander-labs/package-crafting-playground`) and the
+  `ASSET_NAME` constant (already runtime-aware — `package-crafting-playground-bun` /
+  `package-crafting-playground-node` / `package-crafting-playground-deno` — only the base name needs renaming)
+- `.release-it.json`: `github.assets` (`dist/package-crafting-playground-bun`,
+  `dist/package-crafting-playground-node`, `dist/package-crafting-playground-deno`)
 - `.github/workflows/code.yml`: `name`/`path` in the
   `actions/upload-artifact` step
 - `jsr.json`: the `"name"` field — and re-link the renamed package on

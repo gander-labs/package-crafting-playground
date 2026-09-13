@@ -56,10 +56,10 @@ jobs:
       - name: Build and verify artifacts
         run: |
           bun run build
-          node dist/new-bun-app.js --version   # npm bin (node, non-compiled)
-          ./dist/new-app-bun --version          # GitHub Release asset (Bun compile)
-          ./dist/new-app-node --version         # GitHub Release asset (Node SEA)
-          ./dist/new-app-deno --version         # GitHub Release asset (Deno compile)
+          node dist/package-crafting-playground.js --version   # npm bin (node, non-compiled)
+          ./dist/package-crafting-playground-bun --version      # GitHub Release asset (Bun compile)
+          ./dist/package-crafting-playground-node --version     # GitHub Release asset (Node SEA)
+          ./dist/package-crafting-playground-deno --version     # GitHub Release asset (Deno compile)
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"

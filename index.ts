@@ -8,7 +8,7 @@ import { selfUpdate } from "./update.ts";
 const { version } = pkg;
 
 const runOptions = {
-  brief: message`New Bun App CLI.`,
+  brief: message`Package Crafting Playground CLI.`,
   version,
   help: "option" as const,
 };

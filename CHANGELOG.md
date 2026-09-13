@@ -78,7 +78,7 @@ All notable changes to this project will be documented in this file.
 ### CI
 
 - Drop ENFORCE_AUDIT and ARTIFACT_RETENTION_DAYS toggles
-- Publish @gander-labs/new-bun-app to verdaccio.gander.dev
+- Publish @gander-labs/package-crafting-playground to verdaccio.gander.dev
 - Fail fast when NPM_TOKEN secret is missing
 
 ### Documentation

@@ -1,14 +1,14 @@
-# How to publish `@gander-labs/new-bun-app` to Verdaccio
+# How to publish `@gander-labs/package-crafting-playground` to Verdaccio
 
 Step-by-step: generate a registry token, store it as a repo secret, and run
 the release workflow that publishes to <https://verdaccio.gander.dev/>.
 
 - **Registry:** `https://verdaccio.gander.dev/`
-- **Package:** `@gander-labs/new-bun-app`
+- **Package:** `@gander-labs/package-crafting-playground`
 - **Workflow:** `.github/workflows/release.yml` (manual, `workflow_dispatch`)
 
 > **Status:** live. First release through this pipeline was
-> `@gander-labs/new-bun-app@0.3.1` (tag `v0.3.1`). The `NODE_AUTH_TOKEN` secret is
+> `@gander-labs/package-crafting-playground@0.3.1` (tag `v0.3.1`). The `NODE_AUTH_TOKEN` secret is
 > already set on the repo — steps 2–3 are only needed to rotate it.
 
 ---
@@ -17,11 +17,11 @@ the release workflow that publishes to <https://verdaccio.gander.dev/>.
 
 - An account on the Verdaccio instance (username + password).
 - `npm` available locally (only to mint the token).
-- Push access to `gander-labs/new-bun-app` and permission to manage its
+- Push access to `gander-labs/package-crafting-playground` and permission to manage its
   Actions secrets and variables. The [`gh`](https://cli.github.com/) CLI is
   optional but used in the examples.
 - The repo variable `NPM_REGISTRY_URL` set to `https://verdaccio.gander.dev/`
-  (`gh variable set NPM_REGISTRY_URL -R gander-labs/new-bun-app -b
+  (`gh variable set NPM_REGISTRY_URL -R gander-labs/package-crafting-playground -b
   "https://verdaccio.gander.dev/"`) — the workflow reads it for
   `setup-node`'s `registry-url`. It is a plain variable, not a secret,
   since a registry URL isn't sensitive.
@@ -85,10 +85,10 @@ The workflow reads `${{ secrets.NODE_AUTH_TOKEN }}`.
 ### With `gh`
 
 ```bash
-gh secret set NODE_AUTH_TOKEN -R gander-labs/new-bun-app
+gh secret set NODE_AUTH_TOKEN -R gander-labs/package-crafting-playground
 # paste the token when prompted (no echo)
 
-gh secret list -R gander-labs/new-bun-app   # confirm NODE_AUTH_TOKEN is listed
+gh secret list -R gander-labs/package-crafting-playground   # confirm NODE_AUTH_TOKEN is listed
 ```
 
 ### With the web UI
@@ -111,8 +111,8 @@ target Verdaccio.
 **`package.json`**
 
 ```json
-"bin":   { "new-bun-app": "dist/new-bun-app.js" },
-"files": ["dist/new-bun-app.js"],
+"bin":   { "package-crafting-playground": "dist/package-crafting-playground.js" },
+"files": ["dist/package-crafting-playground.js"],
 "publishConfig": {
   "access": "public",
   "registry": "https://verdaccio.gander.dev/"
@@ -120,7 +120,7 @@ target Verdaccio.
 ```
 
 `bin` makes the package runnable via `npx`; `files` is what pulls the
-(git-ignored) `dist/new-bun-app.js` into the tarball. `npm publish` (invoked
+(git-ignored) `dist/package-crafting-playground.js` into the tarball. `npm publish` (invoked
 by release-it) reads `publishConfig.registry`, so it always targets the
 private registry.
 
@@ -192,10 +192,10 @@ The job then:
    `chore: release vX.Y.Z` and tags `vX.Y.Z`,
 5. `after:bump` hook syncs `jsr.json`'s version to match and re-runs
    `bun run build`,
-6. `npm publish --provenance` → `@gander-labs/new-bun-app@X.Y.Z` to
+6. `npm publish --provenance` → `@gander-labs/package-crafting-playground@X.Y.Z` to
    Verdaccio, with a signed provenance attestation attached,
 7. `git push` of the commit + tag,
-8. `deno publish` → `@gander-labs/new-bun-app@X.Y.Z` to JSR (OIDC, no
+8. `deno publish` → `@gander-labs/package-crafting-playground@X.Y.Z` to JSR (OIDC, no
    token — see [Publishing to JSR](#publishing-to-jsr) below),
 9. creates a GitHub Release with the three compiled binaries attached.
 
@@ -207,11 +207,11 @@ If step 6 fails, release-it rolls back steps 4–5 (no tag, no commit pushed).
 
 ```bash
 # latest published version
-npm view @gander-labs/new-bun-app version \
+npm view @gander-labs/package-crafting-playground version \
   --registry https://verdaccio.gander.dev/
 
 # full dist-tags / metadata
-curl -sS https://verdaccio.gander.dev/@gander-labs%2fnew-bun-app \
+curl -sS https://verdaccio.gander.dev/@gander-labs%2fpackage-crafting-playground \
   | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["dist-tags"], list(d["versions"]))'
 # -> {'latest': '0.3.1'} ['0.3.1']
 ```
@@ -227,10 +227,10 @@ and the repo's **Releases** page for the `vX.Y.Z` tag.
 
 | Script | Output | Goes to | Consumed as |
 |---|---|---|---|
-| `build:js` | `dist/new-bun-app.js` (Node bundle, `#!/usr/bin/env node` banner) | **npm tarball** (`files: ["dist/new-bun-app.js"]`, `bin.new-bun-app`) | `npx @gander-labs/new-bun-app`, `npm i -g` — no Bun needed at runtime |
-| `build:bin:bun` | `dist/new-app-bun` (`bun build --compile`, single-platform ELF, ~80 MB, embeds the Bun runtime) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Bun |
-| `build:bin:node` | `dist/new-app-node` (`scripts/build-exe-node.mjs`, Node's Single Executable Application feature — Bun is only used as the bundling step, its output embeds the Node runtime, not Bun's) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Node |
-| `build:bin:deno` | `dist/new-app-deno` (`deno compile`, ~100 MB, embeds the Deno runtime) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Deno |
+| `build:js` | `dist/package-crafting-playground.js` (Node bundle, `#!/usr/bin/env node` banner) | **npm tarball** (`files: ["dist/package-crafting-playground.js"]`, `bin.package-crafting-playground`) | `npx @gander-labs/package-crafting-playground`, `npm i -g` — no Bun needed at runtime |
+| `build:bin:bun` | `dist/package-crafting-playground-bun` (`bun build --compile`, single-platform ELF, ~80 MB, embeds the Bun runtime) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Bun |
+| `build:bin:node` | `dist/package-crafting-playground-node` (`scripts/build-exe-node.mjs`, Node's Single Executable Application feature — Bun is only used as the bundling step, its output embeds the Node runtime, not Bun's) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Node |
+| `build:bin:deno` | `dist/package-crafting-playground-deno` (`deno compile`, ~100 MB, embeds the Deno runtime) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Deno |
 
 All three compiled executables are built and shipped side by side so the
 approaches can be compared; `update.ts` picks the matching asset via
@@ -250,7 +250,7 @@ way `package.json`'s `files` does for npm.
 **One-time setup (manual, not something this repo's config can do):**
 
 1. Create the `@gander-labs` scope on <https://jsr.io> if it doesn't exist yet.
-2. Create the `new-bun-app` package under that scope.
+2. Create the `package-crafting-playground` package under that scope.
 3. In the package's **Settings → Publishing**, link it to this GitHub repo and
    the `.github/workflows/release.yml` workflow. This is what lets `deno
    publish` authenticate via GitHub Actions OIDC (`id-token: write`) with no
@@ -264,7 +264,7 @@ Verify a published version actually runs:
 
 ```bash
 npx --registry https://verdaccio.gander.dev/ \
-  --yes @gander-labs/new-bun-app@latest --version
+  --yes @gander-labs/package-crafting-playground@latest --version
 ```
 
 ---
@@ -275,7 +275,7 @@ npx --registry https://verdaccio.gander.dev/ \
 |---|---|
 | `npm error code ENEEDAUTH` / `need auth This command requires you to be logged in` | `NODE_AUTH_TOKEN` secret is **not set** (empty `NODE_AUTH_TOKEN`). Add it (step 3). The workflow's "Check publish token" step now fails fast with this message. |
 | `npm ERR! 401 Unauthorized` on publish | `NODE_AUTH_TOKEN` is set but wrong or rotated. Re-mint (step 2), re-set the secret (step 3). |
-| `npm ERR! 403 … not allowed to publish` | The package name is owned by someone else on the registry, or access rules block it. Confirm the name is `@gander-labs/new-bun-app`. |
+| `npm ERR! 403 … not allowed to publish` | The package name is owned by someone else on the registry, or access rules block it. Confirm the name is `@gander-labs/package-crafting-playground`. |
 | `EPUBLISHCONFLICT` / `cannot publish over previously published version` | That version already exists. Bump again (run the workflow with `patch`). |
 | release-it stops at a registry check | Ensure `.release-it.json` has `"skipChecks": true`. |
 | Works locally, fails in CI | Local uses your `~/.npmrc`; CI uses `NODE_AUTH_TOKEN`. The CI token must be valid independently. |

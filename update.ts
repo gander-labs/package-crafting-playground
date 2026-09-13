@@ -3,15 +3,15 @@ import { chmod, rename, writeFile } from "node:fs/promises";
 import pkg from "./package.json" with { type: "json" };
 
 const CURRENT_VERSION = pkg.version;
-const REPO = "gander-labs/new-bun-app";
-// Three compiled executables ship per release (dist/new-app-bun,
-// dist/new-app-node, dist/new-app-deno); update in place to the same
-// runtime flavor that's currently running.
+const REPO = "gander-labs/package-crafting-playground";
+// Three compiled executables ship per release (dist/package-crafting-playground-bun,
+// dist/package-crafting-playground-node, dist/package-crafting-playground-deno);
+// update in place to the same runtime flavor that's currently running.
 const ASSET_NAME = process.versions.bun
-  ? "new-app-bun"
+  ? "package-crafting-playground-bun"
   : process.versions.deno
-    ? "new-app-deno"
-    : "new-app-node";
+    ? "package-crafting-playground-deno"
+    : "package-crafting-playground-node";
 
 interface Release {
   tag_name: string;

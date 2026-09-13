@@ -19,7 +19,11 @@
   },
   "github": {
     "release": true,
-    "assets": ["dist/new-app-bun", "dist/new-app-node", "dist/new-app-deno"],
-    "releaseNotes": "bunx git-cliff --config cliff.toml --output - --unreleased --tag v${version} --strip header && echo && echo 'Full changelog: https://github.com/gander-labs/new-bun-app/blob/v${version}/CHANGELOG.md'"
+    "assets": [
+      "dist/package-crafting-playground-bun",
+      "dist/package-crafting-playground-node",
+      "dist/package-crafting-playground-deno"
+    ],
+    "releaseNotes": "bunx git-cliff --config cliff.toml --output - --unreleased --tag v${version} --strip header && echo && echo 'Full changelog: https://github.com/gander-labs/package-crafting-playground/blob/v${version}/CHANGELOG.md'"
   }
 }

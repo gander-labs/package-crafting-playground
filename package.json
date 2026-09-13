@@ -1,13 +1,13 @@
 {
-  "name": "@gander-labs/new-bun-app",
+  "name": "@gander-labs/package-crafting-playground",
   "version": "0.3.5",
   "license": "AGPL-3.0-only",
   "type": "module",
   "bin": {
-    "new-bun-app": "dist/new-bun-app.js"
+    "package-crafting-playground": "dist/package-crafting-playground.js"
   },
   "files": [
-    "dist/new-bun-app.js"
+    "dist/package-crafting-playground.js"
   ],
   "publishConfig": {
     "access": "public"
@@ -18,11 +18,11 @@
     "fix": "biome check --write .",
     "typecheck": "tsc --noEmit",
     "build": "bun run build:js && bun run build:bin",
-    "build:js": "bun build ./index.ts --target node --banner '#!/usr/bin/env node' --outfile dist/new-bun-app.js",
+    "build:js": "bun build ./index.ts --target node --banner '#!/usr/bin/env node' --outfile dist/package-crafting-playground.js",
     "build:bin": "bun run build:bin:bun && bun run build:bin:node && bun run build:bin:deno",
-    "build:bin:bun": "bun build ./index.ts --compile --outfile dist/new-app-bun",
+    "build:bin:bun": "bun build ./index.ts --compile --outfile dist/package-crafting-playground-bun",
     "build:bin:node": "node scripts/build-exe-node.mjs",
-    "build:bin:deno": "deno compile --no-check --exclude-unused-npm --node-modules-dir=none --allow-net --allow-write --allow-env=GITHUB_TOKEN,GH_TOKEN --output dist/new-app-deno ./index.ts",
+    "build:bin:deno": "deno compile --no-check --exclude-unused-npm --node-modules-dir=none --allow-net --allow-write --allow-env=GITHUB_TOKEN,GH_TOKEN --output dist/package-crafting-playground-deno ./index.ts",
     "prepare": "lefthook install"
   },
   "engines": {

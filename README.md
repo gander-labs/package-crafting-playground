@@ -1,4 +1,4 @@
-# new-bun-app
+# package-crafting-playground
 
 A Bun CLI starter template: TypeScript CLI built with
 [Optique](https://github.com/dahlia/optique), self-update via GitHub
