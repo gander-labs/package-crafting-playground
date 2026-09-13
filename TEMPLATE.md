@@ -139,9 +139,9 @@ Co się odblokowuje/zmienia po przejściu na public:
   wymagać tokenu — private zwraca `404` bez `GITHUB_TOKEN`/`GH_TOKEN`,
   public odpowiada normalnie (limit 60 req/h bez tokenu).
 - OIDC Trusted Publishing do **publicznego** rejestru npm
-  (`registry.npmjs.org`) staje się sensowną opcją zamiast
-  `NODE_AUTH_TOKEN` — patrz sekcja "OIDC trusted publishing" niżej. Nie
-  dotyczy to Verdaccio, którego ten projekt używa.
+  (`registry.npmjs.org`, którego ten projekt już używa) staje się sensowną
+  opcją zamiast `NODE_AUTH_TOKEN` — patrz sekcja "OIDC trusted publishing"
+  niżej.
 
 ### Migracja Dependabot -> Renovate (przy uwolnieniu jako OSS)
 
@@ -175,60 +175,51 @@ zakładki:
 - **Secrets** -> **New repository secret** — wartości szyfrowane,
   niewidoczne w logach (np. `NODE_AUTH_TOKEN`, patrz howto.md).
 - **Variables** -> **New repository variable** — jawny tekst, widoczny w
-  UI i logach, do wartości nie-sekretnych (np. `NPM_REGISTRY_URL`,
+  UI i logach, do wartości nie-sekretnych (np. `NPM_PROVENANCE`,
   `ARTIFACT_RETENTION_DAYS` używane w `code.yml`/`release.yml`).
 
 Ten sam ekran ma też zakładki **Environments** (sekrety/zmienne scope'owane
 per środowisko, z opcjonalnym required reviewers) i **Codespaces**, jeśli
 projekt tego kiedyś potrzebuje.
 
-## Publishing to npm (Verdaccio)
+## Publishing to npm
 
-See [howto.md](howto.md) for the step-by-step setup (registry token, repo
+See [howto.md](howto.md) for the step-by-step setup (access token, repo
 secret, what the release workflow does). The rest of this section covers
-what changes per new project, and two alternatives worth knowing about.
+what changes per new project, and an alternative worth knowing about.
 
 ### Provisioning a new project
 
 Each new project needs its own registry identity, not a copy of this
 one's:
 
-- A **package scope/name** on the registry that isn't already taken
+- A **package scope/name** on npmjs.com that isn't already taken
   (`@gander-labs/<name>`, see the rename checklist above).
 - Its own `NODE_AUTH_TOKEN` secret (howto.md steps 2-3) — never reuse a
   token across projects; if one leaks or gets rotated, the blast radius
   should be one repo.
-- The `NPM_REGISTRY_URL` repo variable (howto.md step 1), if it should
-  ever differ from the shared `https://verdaccio.gander.dev/`.
 
-### OIDC trusted publishing — not applicable here
+### OIDC trusted publishing — an alternative to `NODE_AUTH_TOKEN`
 
 npm's [Trusted Publishing][1] (GA since July 2025) lets a GitHub Actions
 workflow publish without any stored token at all: npm exchanges the
 workflow's OIDC identity for a short-lived credential. It removes the
-"long-lived secret sitting in repo settings" risk entirely.
+"long-lived secret sitting in repo settings" risk entirely, and works
+against the public registry this project already publishes to
+(`registry.npmjs.org`). Not wired up here yet — to switch: add
+`permissions: id-token: write` to the release job, configure the Trusted
+Publisher on the npmjs.com package settings page, and drop the
+`NODE_AUTH_TOKEN` secret and `registry-url` input entirely (npm CLI ≥
+11.5.1 required).
 
-**This only works against the public registry (`registry.npmjs.org`)** —
-there is no evidence Verdaccio implements the same OIDC exchange, so it
-does not apply to this project's `verdaccio.gander.dev` setup. If a new
-project publishes to the *public* npm registry instead, prefer OIDC over
-`NODE_AUTH_TOKEN`: add `permissions: id-token: write` to the release job,
-configure the Trusted Publisher on the npmjs.com package settings page,
-and drop the `NODE_AUTH_TOKEN` secret and `registry-url` input entirely
-(npm CLI ≥ 11.5.1 required).
+### Dry-run testing
 
-### Local Verdaccio for dry-run testing
-
-Before wiring up the real registry secret (or when debugging a publish
-failure), run a throwaway registry locally instead of risking a bad
-publish against the shared instance:
+Before wiring up the real token (or when debugging a publish failure),
+check what would be published without actually publishing:
 
 ```bash
-docker run --rm -it -p 4873:4873 verdaccio/verdaccio
-npm publish --registry http://localhost:4873
+bun run build
+npm publish --dry-run
 ```
-
-This exercises the exact same `package.json`/`publishConfig` path without
-touching `verdaccio.gander.dev` or consuming a real version number.
 
 [1]: https://docs.npmjs.com/trusted-publishers/

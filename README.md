@@ -18,7 +18,7 @@ bun run build
 
 - [TEMPLATE.md](TEMPLATE.md) — turning this template into a new project
   (what to rename, what to configure).
-- [howto.md](howto.md) — publishing to npm (Verdaccio) and JSR.
+- [howto.md](howto.md) — publishing to npm and JSR.
 - [CHANGELOG.md](CHANGELOG.md) — release history.
 
 ## License

@@ -1,80 +1,43 @@
-# How to publish `@gander-labs/package-crafting-playground` to Verdaccio
+# How to publish `@gander-labs/package-crafting-playground` to npm
 
-Step-by-step: generate a registry token, store it as a repo secret, and run
-the release workflow that publishes to <https://verdaccio.gander.dev/>.
+Step-by-step: generate an npm access token, store it as a repo secret, and run
+the release workflow that publishes to <https://registry.npmjs.org/>.
 
-- **Registry:** `https://verdaccio.gander.dev/`
+- **Registry:** `https://registry.npmjs.org/`
 - **Package:** `@gander-labs/package-crafting-playground`
 - **Workflow:** `.github/workflows/release.yml` (manual, `workflow_dispatch`)
-
-> **Status:** live. First release through this pipeline was
-> `@gander-labs/package-crafting-playground@0.3.1` (tag `v0.3.1`). The `NODE_AUTH_TOKEN` secret is
-> already set on the repo — steps 2–3 are only needed to rotate it.
 
 ---
 
 ## 1. Prerequisites
 
-- An account on the Verdaccio instance (username + password).
+- An npmjs.com account with publish access to the `@gander-labs` scope.
 - `npm` available locally (only to mint the token).
 - Push access to `gander-labs/package-crafting-playground` and permission to manage its
-  Actions secrets and variables. The [`gh`](https://cli.github.com/) CLI is
-  optional but used in the examples.
-- The repo variable `NPM_REGISTRY_URL` set to `https://verdaccio.gander.dev/`
-  (`gh variable set NPM_REGISTRY_URL -R gander-labs/package-crafting-playground -b
-  "https://verdaccio.gander.dev/"`) — the workflow reads it for
-  `setup-node`'s `registry-url`. It is a plain variable, not a secret,
-  since a registry URL isn't sensitive.
+  Actions secrets. The [`gh`](https://cli.github.com/) CLI is optional but
+  used in the examples.
 
 ---
 
-## 2. Generate a Verdaccio auth token
+## 2. Generate an npm access token
 
-You need a **bearer token** the registry accepts. Pick one method.
+Create a **Granular Access Token** (or classic **Automation** token) scoped to
+publish `@gander-labs/package-crafting-playground`:
 
-### Option A — `npm login` (recommended)
+1. <https://www.npmjs.com/> → avatar → **Access Tokens** → **Generate New Token**
+   → **Granular Access Token**.
+2. Set **Packages and scopes** → **Read and write**, restricted to this
+   package (or the `@gander-labs` scope).
+3. No expiration is needed for a CI secret, but rotate it periodically.
 
-```bash
-npm login --registry https://verdaccio.gander.dev/
-# enter username / password (and email if asked)
-```
-
-This writes the token into your user `~/.npmrc`. Read it back:
-
-```bash
-npm config get //verdaccio.gander.dev/:_authToken
-```
-
-Copy the printed value — that is the token.
-
-### Option B — direct API call
-
-```bash
-USER=your-username
-PASS=your-password
-
-curl -sS -X PUT \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Basic $(printf '%s:%s' "$USER" "$PASS" | base64)" \
-  -d "{\"name\":\"$USER\",\"password\":\"$PASS\",\"type\":\"user\",\"roles\":[],\"date\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\"}" \
-  https://verdaccio.gander.dev/-/user/org.couchdb.user:$USER
-```
-
-Response contains `"token": "…"`. That string is the token.
-
-> The `Authorization: Basic` header is required — without it the request is
-> treated as a new registration and rejected with `user registration disabled`.
+Automation tokens (classic UI) work the same way and bypass 2FA prompts,
+which is what a non-interactive CI run needs.
 
 ### Verify the token works
 
 ```bash
-curl -sS -H "Authorization: Bearer <TOKEN>" https://verdaccio.gander.dev/-/whoami
-# -> {"username":"your-username"}
+npm whoami --//registry.npmjs.org/:_authToken=<TOKEN>
 ```
-
-Verdaccio legacy tokens do not expire on their own, but rotating the server
-secret invalidates them — if publishing starts returning `401`, mint a new
-one and repeat step 3.
 
 ---
 
@@ -98,15 +61,12 @@ gh secret list -R gander-labs/package-crafting-playground   # confirm NODE_AUTH_
 - **Name:** `NODE_AUTH_TOKEN`
 - **Secret:** the token from step 2
 
-No other secret or variable is needed. `GITHUB_TOKEN` is provided
-automatically by Actions.
+No other secret is needed. `GITHUB_TOKEN` is provided automatically by
+Actions.
 
 ---
 
 ## 4. How the workflow is wired (already committed)
-
-You do not need to change anything here — this is what makes the publish
-target Verdaccio.
 
 **`package.json`**
 
@@ -114,39 +74,16 @@ target Verdaccio.
 "bin":   { "package-crafting-playground": "dist/package-crafting-playground.js" },
 "files": ["dist/package-crafting-playground.js"],
 "publishConfig": {
-  "access": "public",
-  "registry": "https://verdaccio.gander.dev/"
+  "access": "public"
 }
 ```
 
 `bin` makes the package runnable via `npx`; `files` is what pulls the
-(git-ignored) `dist/package-crafting-playground.js` into the tarball. `npm publish` (invoked
-by release-it) reads `publishConfig.registry`, so it always targets the
-private registry.
-
-**`.release-it.json`**
-
-```json
-"npm": {
-  "publish": true,
-  "skipChecks": true,
-  "publishArgs": "--provenance"
-}
-```
-
-`publish: true` turns the npm publish step on; `skipChecks: true` skips
-release-it's registry ping / `whoami` preflight (which is fussy against a
-private registry). `publishArgs: "--provenance"` makes `npm publish` attach a
-[provenance attestation](https://docs.npmjs.com/generating-provenance-statements)
-— a signed statement (via Sigstore, using the job's GitHub Actions OIDC
-token — the same `id-token: write` permission JSR's publish uses) proving
-the package was built from this exact repo/workflow/commit, the npm
-equivalent of what `deno publish` already does by default on JSR.
-
-> Attestation storage is a registry-side feature. If Verdaccio's version
-> here doesn't support the `/-/npm/v1/security/attestations` endpoint,
-> `npm publish --provenance` fails on that step — drop `--provenance` from
-> `publishArgs` if so, rather than fighting the registry.
+(git-ignored) `dist/package-crafting-playground.js` into the tarball. No
+`registry` is set in `publishConfig`, so `npm publish` targets npm's default
+registry, `https://registry.npmjs.org/`. `access: "public"` is required
+because the package is scoped (`@gander-labs/...`) — scoped packages default
+to private otherwise.
 
 **`.github/workflows/release.yml`**
 
@@ -154,8 +91,8 @@ equivalent of what `deno publish` already does by default on JSR.
 - name: Setup Node
   uses: actions/setup-node@…
   with:
-    node-version: 24
-    registry-url: ${{ vars.NPM_REGISTRY_URL }}   # writes .npmrc
+    node-version: 26
+    registry-url: https://registry.npmjs.org
 
 - name: release-it
   run: bunx release-it ${{ inputs.bump }} --ci
@@ -167,11 +104,17 @@ equivalent of what `deno publish` already does by default on JSR.
 `registry-url` makes `setup-node` write a job-local `.npmrc`:
 
 ```
-//verdaccio.gander.dev/:_authToken=${NODE_AUTH_TOKEN}
+//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-so `npm publish` authenticates with `NODE_AUTH_TOKEN`. `npm publish` reads the
-target registry from `publishConfig.registry` in `package.json`.
+so `npm publish` (invoked by release-it) authenticates with `NODE_AUTH_TOKEN`.
+
+Set the repo variable `NPM_PROVENANCE` to `true` to have the workflow attach
+a [provenance attestation](https://docs.npmjs.com/generating-provenance-statements)
+via `--npm.publishArgs=--provenance` — a signed statement (via Sigstore,
+using the job's GitHub Actions OIDC token, the same `id-token: write`
+permission JSR's publish uses) proving the package was built from this exact
+repo/workflow/commit. Fully supported on the public npm registry.
 
 ---
 
@@ -192,8 +135,7 @@ The job then:
    `chore: release vX.Y.Z` and tags `vX.Y.Z`,
 5. `after:bump` hook syncs `jsr.json`'s version to match and re-runs
    `bun run build`,
-6. `npm publish --provenance` → `@gander-labs/package-crafting-playground@X.Y.Z` to
-   Verdaccio, with a signed provenance attestation attached,
+6. `npm publish` → `@gander-labs/package-crafting-playground@X.Y.Z` to npm,
 7. `git push` of the commit + tag,
 8. `deno publish` → `@gander-labs/package-crafting-playground@X.Y.Z` to JSR (OIDC, no
    token — see [Publishing to JSR](#publishing-to-jsr) below),
@@ -206,14 +148,8 @@ If step 6 fails, release-it rolls back steps 4–5 (no tag, no commit pushed).
 ## 6. Verify
 
 ```bash
-# latest published version
-npm view @gander-labs/package-crafting-playground version \
-  --registry https://verdaccio.gander.dev/
-
-# full dist-tags / metadata
-curl -sS https://verdaccio.gander.dev/@gander-labs%2fpackage-crafting-playground \
-  | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["dist-tags"], list(d["versions"]))'
-# -> {'latest': '0.3.1'} ['0.3.1']
+npm view @gander-labs/package-crafting-playground version
+npm view @gander-labs/package-crafting-playground
 ```
 
 Also check the run's **Summary** panel for the Release URL and binary link,
@@ -263,8 +199,7 @@ expect (and re-run after linking) that one failure.
 Verify a published version actually runs:
 
 ```bash
-npx --registry https://verdaccio.gander.dev/ \
-  --yes @gander-labs/package-crafting-playground@latest --version
+npx --yes @gander-labs/package-crafting-playground@latest --version
 ```
 
 ---
@@ -275,11 +210,9 @@ npx --registry https://verdaccio.gander.dev/ \
 |---|---|
 | `npm error code ENEEDAUTH` / `need auth This command requires you to be logged in` | `NODE_AUTH_TOKEN` secret is **not set** (empty `NODE_AUTH_TOKEN`). Add it (step 3). The workflow's "Check publish token" step now fails fast with this message. |
 | `npm ERR! 401 Unauthorized` on publish | `NODE_AUTH_TOKEN` is set but wrong or rotated. Re-mint (step 2), re-set the secret (step 3). |
-| `npm ERR! 403 … not allowed to publish` | The package name is owned by someone else on the registry, or access rules block it. Confirm the name is `@gander-labs/package-crafting-playground`. |
+| `npm ERR! 403 … not allowed to publish` | The `@gander-labs` scope/package is owned by a different npm account, or the token lacks publish access to it. Confirm the name is `@gander-labs/package-crafting-playground` and the token's scope grants. |
 | `EPUBLISHCONFLICT` / `cannot publish over previously published version` | That version already exists. Bump again (run the workflow with `patch`). |
-| release-it stops at a registry check | Ensure `.release-it.json` has `"skipChecks": true`. |
 | Works locally, fails in CI | Local uses your `~/.npmrc`; CI uses `NODE_AUTH_TOKEN`. The CI token must be valid independently. |
-| `npm error 404 Not Found - PUT .../-/npm/v1/security/attestations` (or similar) on publish | Verdaccio here doesn't support storing provenance attestations. Drop `--provenance` from `.release-it.json`'s `npm.publishArgs`. |
 | `npm error "provenance" is only supported when publishing packages with public access` | Shouldn't happen — `publishConfig.access: "public"` is already set — but if it does, that's the real requirement to check. |
 
 ---
@@ -287,9 +220,9 @@ npx --registry https://verdaccio.gander.dev/ \
 ## Publishing manually (without the workflow)
 
 ```bash
-npm login --registry https://verdaccio.gander.dev/
+npm login
 bun run build
-npm publish            # registry comes from publishConfig; no --provenance here —
-                        # it needs a supported CI's OIDC token (GitHub Actions),
-                        # not a local login
+npm publish            # registry is npm's default (registry.npmjs.org);
+                        # no --provenance here — it needs a supported CI's
+                        # OIDC token (GitHub Actions), not a local login
 ```
