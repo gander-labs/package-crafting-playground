@@ -1,6 +1,10 @@
 # dependencies (bun install)
 node_modules
 
+# generated only for `npm sbom` (see .github/workflows/code.yml); bun.lock
+# is the real lockfile
+package-lock.json
+
 # output
 out
 dist

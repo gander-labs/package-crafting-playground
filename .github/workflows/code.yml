@@ -49,9 +49,31 @@ jobs:
         run: bun audit
       - name: Quality (Biome)
         run: bunx biome ci .
+      # AGPL-3.0-only own license is intentional; anything else flags a
+      # dependency whose license terms haven't been reviewed.
+      - name: License check
+        run: bun run license-check
       - name: Compile
         if: github.event_name != 'schedule'
         run: bun run build
+      - name: Publint
+        if: github.event_name != 'schedule'
+        run: bun run publint
+      # npm sbom needs npm's own resolution of node_modules to build an
+      # accurate tree; Bun's node_modules layout doesn't satisfy it, so
+      # reinstall with npm just for this step (nothing after needs Bun's
+      # node_modules).
+      - name: Generate SBOM (SPDX)
+        run: |
+          rm -rf node_modules
+          npm install --ignore-scripts
+          npm sbom --sbom-format spdx > sbom.spdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom
+          path: sbom.spdx.json
+          retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
       - name: Upload build artifacts
         id: artifact
         if: github.event_name != 'schedule'

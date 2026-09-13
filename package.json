@@ -21,6 +21,8 @@
     "lint": "biome lint .",
     "fix": "biome check --write .",
     "typecheck": "tsc --noEmit",
+    "publint": "publint",
+    "license-check": "license-checker --production --onlyAllow \"MIT;Apache-2.0;MIT OR Apache-2.0;ISC;BSD-2-Clause;BSD-3-Clause;0BSD;AGPL-3.0-only\" --summary",
     "build": "bun run build:js && bun run build:bin",
     "build:js": "bun build ./index.ts --target node --banner '#!/usr/bin/env node' --outfile dist/package-crafting-playground.js",
     "build:bin": "bun run build:bin:bun && bun run build:bin:node && bun run build:bin:deno",
@@ -42,7 +44,9 @@
     "@types/bun": "latest",
     "git-cliff": "^2.13.1",
     "lefthook": "^2.1.12",
-    "postject": "^1.0.0-alpha.6"
+    "license-checker": "^25.0.1",
+    "postject": "^1.0.0-alpha.6",
+    "publint": "^0.3.24"
   },
   "peerDependencies": {
     "typescript": "^7"
