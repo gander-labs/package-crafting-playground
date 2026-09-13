@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/release-it@20/schema/release-it.json",
+  "git": {
+    "commitMessage": "chore: release v${version}",
+    "tagName": "v${version}",
+    "changelog": "bunx git-cliff --config cliff.toml --unreleased --strip header"
+  },
+  "npm": {
+    "publish": true,
+    "skipChecks": true
+  },
+  "plugins": {
+    "@release-it/bumper": {
+      "out": "jsr.json"
+    }
+  },
+  "hooks": {
+    "after:bump": "bun run build && bunx git-cliff --config cliff.toml --output CHANGELOG.md --tag v${version}"
+  },
+  "github": {
+    "release": true,
+    "assets": ["dist/new-app-bun", "dist/new-app-node", "dist/new-app-deno"],
+    "releaseNotes": "bunx git-cliff --config cliff.toml --output - --unreleased --tag v${version} --strip header && echo && echo 'Full changelog: https://github.com/gander-labs/new-bun-app/blob/v${version}/CHANGELOG.md'"
+  }
+}

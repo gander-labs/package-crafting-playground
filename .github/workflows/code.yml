@@ -1,0 +1,90 @@
+name: Code
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Code Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.0"
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+      - name: Setup Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.9.6
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Test
+        run: bun run test
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Audit
+        id: audit
+        run: bun audit
+      - name: Quality (Biome)
+        run: bunx biome ci .
+      - name: Compile
+        if: github.event_name != 'schedule'
+        run: bun run build
+      - name: Upload build artifacts
+        id: artifact
+        if: github.event_name != 'schedule'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: new-app-executables
+          path: |
+            dist/new-app-bun
+            dist/new-app-node
+            dist/new-app-deno
+          retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
+      - name: Summary
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "${{ steps.artifact.outcome }}" = "success" ]; then
+            {
+              echo "## CI summary"
+              echo ""
+              echo "- Build artifact: $ARTIFACT_URL"
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.artifact.outcome }}" = "skipped" ] && [ "$JOB_STATUS" = "success" ]; then
+            {
+              echo "## CI summary"
+              echo ""
+              echo "Scheduled canary run — checks only, no build artifact."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## CI summary"
+              echo ""
+              echo "One or more checks failed before the build artifact step; see the job log above."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

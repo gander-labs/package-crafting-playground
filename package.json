@@ -1,0 +1,50 @@
+{
+  "name": "@gander-labs/new-bun-app",
+  "version": "0.3.5",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "bin": {
+    "new-bun-app": "dist/new-bun-app.js"
+  },
+  "files": [
+    "dist/new-bun-app.js"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "bun test",
+    "lint": "biome lint .",
+    "fix": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "build": "bun run build:js && bun run build:bin",
+    "build:js": "bun build ./index.ts --target node --banner '#!/usr/bin/env node' --outfile dist/new-bun-app.js",
+    "build:bin": "bun run build:bin:bun && bun run build:bin:node && bun run build:bin:deno",
+    "build:bin:bun": "bun build ./index.ts --compile --outfile dist/new-app-bun",
+    "build:bin:node": "node scripts/build-exe-node.mjs",
+    "build:bin:deno": "deno compile --no-check --exclude-unused-npm --node-modules-dir=none --allow-net --allow-write --allow-env=GITHUB_TOKEN,GH_TOKEN --output dist/new-app-deno ./index.ts",
+    "prepare": "lefthook install"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "trustedDependencies": [
+    "lefthook",
+    "git-cliff"
+  ],
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@release-it/bumper": "^8.0.0",
+    "@types/bun": "latest",
+    "git-cliff": "^2.13.1",
+    "lefthook": "^2.1.12",
+    "postject": "^1.0.0-alpha.6"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  },
+  "dependencies": {
+    "@optique/core": "^1.2.5",
+    "@optique/run": "^1.2.5"
+  }
+}

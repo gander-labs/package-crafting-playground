@@ -1,0 +1,19 @@
+# Reference dev-hook config for gander-labs projects.
+# Mirrors the checks in .github/workflows/code.yml so they fail locally
+# before push instead of in Actions. `bun install` wires it up via the
+# `prepare` script (lefthook is in package.json trustedDependencies).
+
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: "*.{ts,tsx,js,jsx,json,jsonc}"
+      run: bunx biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    typecheck:
+      run: bun run typecheck
+
+pre-push:
+  commands:
+    test:
+      run: bun run test

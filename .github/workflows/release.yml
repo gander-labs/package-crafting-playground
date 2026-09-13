@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+jobs:
+  code:
+    name: Code
+    uses: ./.github/workflows/code.yml # zizmor: ignore[self-repository]
+    permissions:
+      contents: read
+
+  release:
+    name: Release
+    needs: code
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write # for JSR's OIDC-based publish (no token secret needed)
+    steps:
+      # release-it pushes the version-bump commit and tag, so the checkout
+      # must keep its credentials. This job uploads no artifacts.
+      - name: Checkout # zizmor: ignore[artipacked]
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.0"
+      # release-it shells out to `npm version` to bump package.json, so pin Node.
+      # registry-url writes an .npmrc so `npm publish` picks up NODE_AUTH_TOKEN.
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+      - name: Setup Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.9.6
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # release-it rebuilds via .release-it.json `after:bump`; this runs first
+      # as a sanity check so a broken build fails before any version bump.
+      - name: Build and verify artifacts
+        run: |
+          bun run build
+          node dist/new-bun-app.js --version   # npm bin (node, non-compiled)
+          ./dist/new-app-bun --version          # GitHub Release asset (Bun compile)
+          ./dist/new-app-node --version         # GitHub Release asset (Node SEA)
+          ./dist/new-app-deno --version         # GitHub Release asset (Deno compile)
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check publish token
+        env:
+          # ponytail: falls back to the retired NPM_TOKEN secret until it's
+          # rotated into NODE_AUTH_TOKEN; drop the fallback once that's done.
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN || secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::NODE_AUTH_TOKEN secret is not set - npm publish would fail with ENEEDAUTH. Add it under Settings -> Secrets and variables -> Actions (see howto.md step 3)."
+            exit 1
+          fi
+
+      - name: release-it
+        id: release-it
+        run: bunx release-it ${{ inputs.bump }} --ci ${{ vars.NPM_PROVENANCE == 'true' && '--npm.publishArgs=--provenance' || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN || secrets.NPM_TOKEN }}
+
+      # Uses GitHub Actions OIDC — no token needed, provided the package on
+      # jsr.io has been linked to this repo's Actions workflow beforehand
+      # (jsr.io package settings -> Publishing -> GitHub Actions).
+      # npm publish and the git tag/push above are not repeatable (npm
+      # rejects re-publishing a version), so a JSR failure here must not
+      # fail the job — that would make retries redo the already-completed
+      # npm publish and collide with it.
+      - name: Publish to JSR
+        id: jsr
+        continue-on-error: true
+        run: deno publish --no-check
+
+      - name: Warn on JSR publish failure
+        if: steps.jsr.outcome == 'failure'
+        run: echo "::warning::Publish to JSR failed - the npm/GitHub release still succeeded. See the Publish to JSR step log and retry manually with 'deno publish --no-check' once fixed (e.g. create the package at jsr.io first)."
+
+      - name: Get release info
+        id: release
+        run: |
+          {
+            echo "url=$(gh release view --json url -q .url)"
+            echo "tag=$(gh release view --json tagName -q .tagName)"
+            echo "asset_url=$(gh release view --json assets -q '.assets[0].url // empty')"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        if: always()
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+          RELEASE_ASSET_URL: ${{ steps.release.outputs.asset_url }}
+          CHANGELOG_URL: https://github.com/${{ github.repository }}/blob/${{ steps.release.outputs.tag }}/CHANGELOG.md
+        run: |
+          if [ "${{ steps.release-it.outcome }}" = "success" ]; then
+            {
+              echo "## Release $RELEASE_TAG"
+              echo ""
+              echo "- Release: $RELEASE_URL"
+              echo "- Binary: $RELEASE_ASSET_URL"
+              echo "- Changelog: $CHANGELOG_URL"
+              if [ "${{ steps.jsr.outcome }}" = "failure" ]; then
+                echo "- JSR: failed, see the Publish to JSR step log"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## Release failed"
+              echo ""
+              echo "release-it did not complete successfully; see the job log above."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
