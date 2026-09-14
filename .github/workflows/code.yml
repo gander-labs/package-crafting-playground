@@ -21,7 +21,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      security-events: write # upload Trivy SARIF to the Security tab
     steps:
+      # audit mode only (logs egress, doesn't block); switch to
+      # egress-policy: block with an allowed-endpoints list once the audit
+      # log shows the full set of domains this job actually calls.
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -78,7 +86,9 @@ jobs:
           retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
       # Uploaded above first so the SBOM is still available to inspect if
       # this step fails the job. ignore-unfixed: no point failing CI on a
-      # CVE with no available patch yet.
+      # CVE with no available patch yet. SARIF output (instead of the
+      # default table) so results also land in the Security tab, not just
+      # the job log.
       - name: Scan SBOM for vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -87,6 +97,15 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "1"
           ignore-unfixed: true
+          format: sarif
+          output: trivy-results.sarif
+      # if: always() so a failed scan above still gets its findings
+      # uploaded for review in the Security tab.
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          sarif_file: trivy-results.sarif
       - name: Upload build artifacts
         id: artifact
         if: github.event_name != 'schedule'
