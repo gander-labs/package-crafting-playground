@@ -59,21 +59,33 @@ jobs:
       - name: Publint
         if: github.event_name != 'schedule'
         run: bun run publint
-      # npm sbom needs npm's own resolution of node_modules to build an
-      # accurate tree; Bun's node_modules layout doesn't satisfy it, so
-      # reinstall with npm just for this step (nothing after needs Bun's
-      # node_modules).
+      # syft added a bun.lock cataloger in v1.46.0; force at least that so
+      # this doesn't silently fall back to an empty/incomplete SBOM on an
+      # older bundled syft.
       - name: Generate SBOM (SPDX)
-        run: |
-          rm -rf node_modules
-          npm install --ignore-scripts
-          npm sbom --sbom-format spdx > sbom.spdx.json
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+          syft-version: v1.51.1
       - name: Upload SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom
           path: sbom.spdx.json
           retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
+      # Uploaded above first so the SBOM is still available to inspect if
+      # this step fails the job. ignore-unfixed: no point failing CI on a
+      # CVE with no available patch yet.
+      - name: Scan SBOM for vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: sbom
+          scan-ref: sbom.spdx.json
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
       - name: Upload build artifacts
         id: artifact
         if: github.event_name != 'schedule'
