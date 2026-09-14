@@ -1,0 +1,6 @@
+# node_modules holds compiled dev-tool binaries (e.g. lefthook, written in
+# Go) whose embedded module versions aren't part of the published npm
+# package. Excluding it keeps the SBOM/vuln scan scoped to what we actually
+# ship; JS dependency versions still come from bun.lock, not node_modules.
+exclude:
+  - "./node_modules/**"
