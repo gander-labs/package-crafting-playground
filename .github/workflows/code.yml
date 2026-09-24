@@ -125,6 +125,8 @@ jobs:
       #       dist/package-crafting-playground-node
       #       dist/package-crafting-playground-deno
       #     retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
+      # PRIVATE repo: for a public repo restore the original Summary that prints
+      # the artifact-url output of the "Upload build artifacts" step (see git history).
       - name: Summary
         if: always()
         env:
@@ -135,7 +137,3 @@ jobs:
             echo ""
             echo "Job status: $JOB_STATUS (no build artifact on a private repo)."
           } >> "$GITHUB_STEP_SUMMARY"
-          # Public repo variant (needs the "Upload build artifacts" step above):
-          # if [ "${{ steps.artifact.outcome }}" = "success" ]; then
-          #   echo "- Build artifact: ${{ steps.artifact.outputs.artifact-url }}"
-          # fi
