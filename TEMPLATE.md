@@ -5,28 +5,75 @@ rename, what to configure, and which pieces are optional.
 
 ## Turning this template into a new project
 
-The name `package-crafting-playground` (and the full path `gander-labs/package-crafting-playground`) shows
-up in several places and needs to be changed everywhere:
+Three strings need replacing. Find any leftovers with
+`grep -rn "package-crafting-playground\|Package Crafting Playground" . --exclude-dir=node_modules --exclude=bun.lock --exclude=CHANGELOG.md`.
 
-- `package.json`: the `"name"` field, `"repository.url"` (must match the new
-  repo exactly — npm's OIDC trusted publishing validates provenance against
-  it and rejects the publish otherwise), and the outfiles in the
-  `"build:bin:bun"` / `"build:bin:node"` / `"build:bin:deno"` scripts
-  (`dist/package-crafting-playground-bun`, `dist/package-crafting-playground-node`, `dist/package-crafting-playground-deno`)
-- `README.md`: the heading (project title)
-- `update.ts`: the `REPO` constant (`gander-labs/package-crafting-playground`) and the
-  `ASSET_NAME` constant (already runtime-aware — `package-crafting-playground-bun` /
-  `package-crafting-playground-node` / `package-crafting-playground-deno` — only the base name needs renaming)
-- `.release-it.json`: `github.assets` (`dist/package-crafting-playground-bun`,
-  `dist/package-crafting-playground-node`, `dist/package-crafting-playground-deno`)
-- `.github/workflows/code.yml`: `name`/`path` in the
-  `actions/upload-artifact` step
-- `jsr.json`: the `"name"` field — and re-link the renamed package on
-  <https://jsr.io> to this repo's `release.yml` (see howto.md, "Publishing
-  to JSR"), since the OIDC link is keyed to the package name
+### 1. `gander-labs/package-crafting-playground` (owner/repo)
+
+- `package.json`: `"repository.url"` (`git+https://github.com/gander-labs/package-crafting-playground.git`;
+  must match the new repo exactly — npm's OIDC trusted publishing validates
+  provenance against it and rejects the publish otherwise)
+- `update.ts`: the `REPO` constant
+- `.release-it.json`: `github.releaseNotes` (the `Full changelog:` URL)
+- `howto.md`: "Push access to ..." and the Trusted Publisher "Repository"
+  field (steps 1-2)
+
+The npm/JSR scope `@gander-labs` is a fourth, related string: it appears in
+`package.json` `"name"`, `jsr.json` `"name"` and throughout `howto.md`
+(headings, `npm view`, `npx`, troubleshooting table). Change it too if the
+new project lives under a different scope. Re-link the renamed JSR package to
+this repo's `release.yml` (howto.md, "Publishing to JSR"), since the OIDC link
+is keyed to the package name.
+
+### 2. `package-crafting-playground` (package / binary base name)
+
+- `package.json`: `"name"` (`@gander-labs/package-crafting-playground`), `"bin"` key and
+  path, `"files"`, and the outfiles in `"build:js"` and
+  `"build:bin:bun"` / `"build:bin:deno"`
+  (`dist/package-crafting-playground.js`, `dist/package-crafting-playground-bun`, `dist/package-crafting-playground-deno`)
+- `jsr.json`: `"name"`
+- `README.md`: the heading (line 1)
+- `update.ts`: the comment and the `ASSET_NAME` values
+  (`package-crafting-playground-bun` / `-node` / `-deno`; only the base name needs renaming)
+- `scripts/build-exe-node.mjs`: header comment, and the `BUNDLE`, `BLOB`,
+  `CONFIG`, `OUTPUT` paths (`package-crafting-playground-node*`)
+- `.release-it.json`: `github.assets` (`dist/package-crafting-playground-bun|node|deno`)
+- `.github/workflows/release.yml`: the "Build and verify artifacts" step
+  (`node dist/package-crafting-playground.js`, `./dist/package-crafting-playground-bun|node|deno`)
+- `.github/workflows/code.yml`: `name`/`path` of the (currently commented out)
+  "Upload build artifacts" step — rename it now so it is correct when restored
+- `howto.md`: package name, `bin`/`files` examples, `npm view`/`npx`
+  commands, the build-output table, JSR package name, troubleshooting table
+
+### 3. Application name in the CLI
+
+- `index.ts`: `runOptions.brief` (`Package Crafting Playground CLI.`), the
+  human-readable name shown in `--help`
+- The command name users type comes from the `"bin"` key in `package.json`
+  and the compiled binary file names (both covered in section 2); there is
+  no separate program-name constant in `cli.ts`.
 
 SHA-pinning is enforced — the Zizmor job in `workflow.yml` fails if a
 floating action tag (e.g. `@v7`) is ever reintroduced.
+
+## Private repositories (GitHub Free)
+
+The workflows are adapted for a **private** repo on a Free plan. Steps that
+fail there are commented out (not removed) and marked `# PRIVATE repo:`;
+grep for that marker to find them all. To use the template in a **public**
+repo, uncomment them:
+
+| Where | What is disabled | Why |
+|---|---|---|
+| `code.yml` | `security-events: write` permission, `Upload Trivy SARIF` step, Trivy `format: sarif`/`output` (now `format: table`) | Code scanning / SARIF upload needs GitHub Code Security ("Resource not accessible by integration"). Trivy still fails the job on CRITICAL/HIGH. |
+| `code.yml` | `Upload SBOM` and `Upload build artifacts` steps; `Summary` step simplified | Private-repo artifact quota (500 MB, account-wide) is exhausted quickly and then every run fails. Binaries ship as GitHub Release assets instead. |
+| `scorecard.yml` | `push` / `branch_protection_rule` triggers (now `workflow_dispatch` only) | Scorecard needs GitHub Advanced Security on private repos. |
+
+Also unavailable on Free private repos (no file to change): branch
+protection/rulesets, environment protection, secret scanning, Dependabot
+version updates are unverified. `harden-runner` still runs in audit mode.
+Actions minutes are capped at 2,000/month, so avoid adding cron triggers.
+`update.ts` needs `GITHUB_TOKEN`/`GH_TOKEN` (see "Self-update").
 
 ## Self-update (`app update`)
 
