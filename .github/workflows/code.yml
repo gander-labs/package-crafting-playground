@@ -19,7 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write # upload Trivy SARIF to the Security tab
+      # PRIVATE repo: code scanning is unavailable on Free, so the SARIF upload
+      # is disabled below. Restore together with the SARIF steps.
+      # security-events: write # upload Trivy SARIF to the Security tab
     steps:
       # audit mode only (logs egress, doesn't block); switch to
       # egress-policy: block with an allowed-endpoints list once the audit
@@ -76,12 +78,14 @@ jobs:
           output-file: sbom.spdx.json
           syft-version: v1.51.1
           config: .syft.yaml
-      - name: Upload SBOM
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: sbom
-          path: sbom.spdx.json
-          retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
+      # PRIVATE repo: no Actions artifacts (account-wide 500 MB quota runs out and
+      # then every run fails). Restore for a public repo.
+      # - name: Upload SBOM
+      #   uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      #   with:
+      #     name: sbom
+      #     path: sbom.spdx.json
+      #     retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
       # Uploaded above first so the SBOM is still available to inspect if
       # this step fails the job. ignore-unfixed: no point failing CI on a
       # CVE with no available patch yet. SARIF output (instead of the
@@ -95,48 +99,43 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "1"
           ignore-unfixed: true
-          format: sarif
-          output: trivy-results.sarif
+          # PRIVATE repo: plain table in the job log (no SARIF upload available).
+          format: table
+          # format: sarif
+          # output: trivy-results.sarif
       # if: always() so a failed scan above still gets its findings
       # uploaded for review in the Security tab.
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
-        with:
-          sarif_file: trivy-results.sarif
-      - name: Upload build artifacts
-        id: artifact
-        if: github.event_name != 'schedule'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: package-crafting-playground-executables
-          path: |
-            dist/package-crafting-playground-bun
-            dist/package-crafting-playground-node
-            dist/package-crafting-playground-deno
-          retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
+      # PRIVATE repo: SARIF upload fails without GitHub Code Security
+      # ("Resource not accessible by integration"). Restore for a public repo.
+      # - name: Upload Trivy SARIF
+      #   if: always()
+      #   uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+      #   with:
+      #     sarif_file: trivy-results.sarif
+      # PRIVATE repo: no Actions artifacts (binaries ship as GitHub Release assets).
+      # Restore for a public repo.
+      # - name: Upload build artifacts
+      #   id: artifact
+      #   if: github.event_name != 'schedule'
+      #   uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      #   with:
+      #     name: package-crafting-playground-executables
+      #     path: |
+      #       dist/package-crafting-playground-bun
+      #       dist/package-crafting-playground-node
+      #       dist/package-crafting-playground-deno
+      #     retention-days: ${{ vars.ARTIFACT_RETENTION_DAYS || '3' }}
       - name: Summary
         if: always()
         env:
-          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
           JOB_STATUS: ${{ job.status }}
         run: |
-          if [ "${{ steps.artifact.outcome }}" = "success" ]; then
-            {
-              echo "## CI summary"
-              echo ""
-              echo "- Build artifact: $ARTIFACT_URL"
-            } >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.artifact.outcome }}" = "skipped" ] && [ "$JOB_STATUS" = "success" ]; then
-            {
-              echo "## CI summary"
-              echo ""
-              echo "Scheduled canary run — checks only, no build artifact."
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            {
-              echo "## CI summary"
-              echo ""
-              echo "One or more checks failed before the build artifact step; see the job log above."
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+          {
+            echo "## CI summary"
+            echo ""
+            echo "Job status: $JOB_STATUS (no build artifact on a private repo)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Public repo variant (needs the "Upload build artifacts" step above):
+          # if [ "${{ steps.artifact.outcome }}" = "success" ]; then
+          #   echo "- Build artifact: ${{ steps.artifact.outputs.artifact-url }}"
+          # fi

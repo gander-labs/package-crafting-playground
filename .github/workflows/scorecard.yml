@@ -1,9 +1,13 @@
 name: Scorecard supply-chain security
 
+# PRIVATE repo: Scorecard needs GitHub Advanced Security (fails with "Resource
+# not accessible by integration"), so it is manual-only. Restore the original
+# triggers for a public repo.
 on:
-  branch_protection_rule:
-  push:
-    branches: [main]
+  workflow_dispatch:
+  # branch_protection_rule:
+  # push:
+  #   branches: [main]
 
 permissions: read-all
 
