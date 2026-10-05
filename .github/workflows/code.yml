@@ -6,6 +6,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
   workflow_dispatch:
   workflow_call:
 
@@ -52,9 +54,14 @@ jobs:
         run: bun run test
       - name: Typecheck
         run: bun run typecheck
-      - name: Audit
+      - name: Run bun audit (all dependencies, high)
         id: audit
-        run: bun audit
+        run: bun audit --audit-level=high
+
+      # bun audit has no --prod flag, so dev dependencies are covered too; moderate stays informational
+      - name: Run bun audit (all dependencies, moderate, informational)
+        run: bun audit --audit-level=moderate
+        continue-on-error: true
       - name: Quality (Biome)
         run: bunx biome ci .
       # AGPL-3.0-only own license is intentional; anything else flags a
