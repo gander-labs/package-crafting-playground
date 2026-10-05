@@ -39,7 +39,7 @@
     "git-cliff"
   ],
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
+    "@biomejs/biome": "2.5.15",
     "@types/bun": "latest",
     "git-cliff": "^2.13.1",
     "lefthook": "^2.1.12",
