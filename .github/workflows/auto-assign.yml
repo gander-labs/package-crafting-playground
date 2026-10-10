@@ -1,44 +1,18 @@
-name: auto-assign
+name: Auto Assign
 
 on:
   issues:
-    types: [opened]
-  pull_request:
     types: [opened, reopened]
-  workflow_dispatch: # backfills every open issue/PR without an assignee
-
-permissions: {}
+  pull_request_target:
+    types: [opened, reopened, ready_for_review]
 
 jobs:
   assign:
+    name: Assign
     runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: write
     steps:
-      - name: Assign
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
-          ASSIGNEES: ${{ vars.ASSIGNEES }} # comma-separated logins, set in repo Settings > Variables
-        # the API returns 201 even when a login can't be assigned, so check the result
-        run: |
-          admins=$(tr ',' '\n' <<< "$ASSIGNEES" | sed 's/^ *//;s/ *$//' | sed '/^$/d')
-          [ -n "$admins" ] || { echo "::error::repo variable ASSIGNEES is empty"; exit 1; }
-          args=(); while read -r l; do args+=(-f "assignees[]=$l"); done <<< "$admins"
-
-          if [ -n "$NUMBER" ]; then
-            numbers=$NUMBER
-          else
-            numbers=$(gh api -X GET search/issues --paginate \
-              -f q="repo:$GITHUB_REPOSITORY is:open no:assignee" --jq '.items[].number')
-          fi
-
-          status=0
-          for n in $numbers; do
-            assigned=$(gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$n/assignees" "${args[@]}" \
-              --jq '.assignees[].login')
-            missing=$(comm -23 <(sort <<< "$admins") <(sort <<< "$assigned"))
-            [ -z "$missing" ] || { echo "::error::not assigned to #$n: $missing"; status=1; }
-          done
-          exit $status
+      - name: Assign gander
+        uses: gander-actions/auto-assign@c3f4b16a68b539efbb07b4fb3ed19b550c8a3bc8 # main
