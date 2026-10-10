@@ -1,0 +1,24 @@
+name: auto-assign
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions: {}
+
+jobs:
+  assign:
+    # only issues/PRs from the admin and Renovate
+    if: contains(fromJSON('["gander","renovate[bot]"]'), github.event.issue.user.login || github.event.pull_request.user.login)
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Assign admin
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+        run: gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/assignees" -f 'assignees[]=gander'
