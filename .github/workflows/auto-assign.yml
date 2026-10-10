@@ -3,7 +3,7 @@ name: Auto Assign
 on:
   issues:
     types: [opened, reopened]
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, ready_for_review]
 
 jobs:
@@ -15,4 +15,4 @@ jobs:
       pull-requests: write
     steps:
       - name: Assign gander
-        uses: gander-actions/auto-assign@c3f4b16a68b539efbb07b4fb3ed19b550c8a3bc8 # main
+        uses: gander-actions/auto-assign@31671bb55868da4f62405f95c1c8b3c3455fd93d # main
