@@ -16,14 +16,15 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - name: Assign repo admins
+      - name: Assign
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          ASSIGNEES: ${{ vars.ASSIGNEES }} # comma-separated logins, set in repo Settings > Variables
         # the API returns 201 even when a login can't be assigned, so check the result
         run: |
-          admins=$(gh api "repos/$GITHUB_REPOSITORY/collaborators?permission=admin" --jq '.[].login')
-          [ -n "$admins" ] || { echo "::error::no repo admins found"; exit 1; }
+          admins=$(tr ',' '\n' <<< "$ASSIGNEES" | sed 's/^ *//;s/ *$//' | sed '/^$/d')
+          [ -n "$admins" ] || { echo "::error::repo variable ASSIGNEES is empty"; exit 1; }
           args=(); while read -r l; do args+=(-f "assignees[]=$l"); done <<< "$admins"
 
           if [ -n "$NUMBER" ]; then
