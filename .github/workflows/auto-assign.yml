@@ -19,16 +19,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
-          AUTHOR: ${{ github.event.issue.user.login || github.event.pull_request.user.login }}
         # the API returns 201 even when a login can't be assigned, so check the result
         run: |
           admins=$(gh api "repos/$GITHUB_REPOSITORY/collaborators?permission=admin" --jq '.[].login')
           [ -n "$admins" ] || { echo "::error::no repo admins found"; exit 1; }
-
-          # only issues/PRs from the admins and Renovate
-          if [ "$AUTHOR" != "renovate[bot]" ] && ! grep -qxF "$AUTHOR" <<< "$admins"; then
-            echo "skipping, author $AUTHOR is not an admin"; exit 0
-          fi
 
           args=(); while read -r l; do args+=(-f "assignees[]=$l"); done <<< "$admins"
           assigned=$(gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/assignees" "${args[@]}" \
