@@ -1,0 +1,32 @@
+name: auto-assign
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened, reopened]
+
+permissions: {}
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Assign repo admins
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+        # the API returns 201 even when a login can't be assigned, so check the result
+        run: |
+          admins=$(gh api "repos/$GITHUB_REPOSITORY/collaborators?permission=admin" --jq '.[].login')
+          [ -n "$admins" ] || { echo "::error::no repo admins found"; exit 1; }
+
+          args=(); while read -r l; do args+=(-f "assignees[]=$l"); done <<< "$admins"
+          assigned=$(gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/assignees" "${args[@]}" \
+            --jq '.assignees[].login')
+
+          missing=$(comm -23 <(sort <<< "$admins") <(sort <<< "$assigned"))
+          [ -z "$missing" ] || { echo "::error::not assigned to #$NUMBER: $missing"; exit 1; }
