@@ -8,17 +8,24 @@ on:
 
 permissions: {}
 
+env:
+  ADMIN: gander
+
 jobs:
   assign:
-    # only issues/PRs from the admin and Renovate
-    if: contains(fromJSON('["gander","renovate[bot]"]'), github.event.issue.user.login || github.event.pull_request.user.login)
     runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: write
     steps:
       - name: Assign admin
+        # only issues/PRs from the admin and Renovate
+        if: contains(fromJSON(format('["{0}","renovate[bot]"]', env.ADMIN)), github.event.issue.user.login || github.event.pull_request.user.login)
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
-        run: gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/assignees" -f 'assignees[]=gander'
+        # the API returns 201 even when the login can't be assigned, so check the result
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/assignees" -f "assignees[]=$ADMIN" \
+            --jq '.assignees[].login' | grep -qxF "$ADMIN" \
+            || { echo "::error::$ADMIN was not assigned to #$NUMBER"; exit 1; }
