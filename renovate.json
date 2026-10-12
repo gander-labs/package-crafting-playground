@@ -1,4 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>gander-settings/renovate:automerge"]
+  "extends": [
+    "github>gander-settings/renovate:automerge",
+    "github>gander-settings/renovate:pin(node,26)",
+    "github>gander-settings/renovate:before(typescript,8)"
+  ]
 }
