@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/*.md"]
+    "includes": ["**", "!**/node_modules", "!**/dist", "!**/build", "!**/*.md"]
   },
   "formatter": {
     "enabled": true,
