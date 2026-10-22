@@ -19,5 +19,3 @@ All notable changes to this project will be documented in this file.
 ### Miscellaneous
 
 - Rename package from new-bun-app to package-crafting-playground
-
-
