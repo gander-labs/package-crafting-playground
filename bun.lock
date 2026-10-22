@@ -9,7 +9,7 @@
         "@optique/run": "^1.2.5",
       },
       "devDependencies": {
-        "@biomejs/biome": "2.6.2",
+        "@biomejs/biome": "~2.6.2",
         "@types/bun": "latest",
         "git-cliff": "^2.13.1",
         "lefthook": "^2.1.12",
