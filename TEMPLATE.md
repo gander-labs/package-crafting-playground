@@ -63,11 +63,11 @@ fail there are commented out (not removed) and marked `# PRIVATE repo:`;
 grep for that marker to find them all. To use the template in a **public**
 repo, uncomment them:
 
-| Where | What is disabled | Why |
-|---|---|---|
-| `code.yml` | `security-events: write` permission, `Upload Trivy SARIF` step, Trivy `format: sarif`/`output` (now `format: table`) | Code scanning / SARIF upload needs GitHub Code Security ("Resource not accessible by integration"). Trivy still fails the job on CRITICAL/HIGH. |
-| `code.yml` | `Upload SBOM` and `Upload build artifacts` steps; `Summary` step simplified | Private-repo artifact quota (500 MB, account-wide) is exhausted quickly and then every run fails. Binaries ship as GitHub Release assets instead. |
-| `scorecard.yml` | `push` / `branch_protection_rule` triggers (now `workflow_dispatch` only) | Scorecard needs GitHub Advanced Security on private repos. |
+| Where           | What is disabled                                                                                                     | Why                                                                                                                                               |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code.yml`      | `security-events: write` permission, `Upload Trivy SARIF` step, Trivy `format: sarif`/`output` (now `format: table`) | Code scanning / SARIF upload needs GitHub Code Security ("Resource not accessible by integration"). Trivy still fails the job on CRITICAL/HIGH.   |
+| `code.yml`      | `Upload SBOM` and `Upload build artifacts` steps; `Summary` step simplified                                          | Private-repo artifact quota (500 MB, account-wide) is exhausted quickly and then every run fails. Binaries ship as GitHub Release assets instead. |
+| `scorecard.yml` | `push` / `branch_protection_rule` triggers (now `workflow_dispatch` only)                                            | Scorecard needs GitHub Advanced Security on private repos.                                                                                        |
 
 Also unavailable on Free private repos (no file to change): branch
 protection/rulesets, environment protection, secret scanning, Dependabot
@@ -83,7 +83,6 @@ for a project that ships that way (the `release.yml` workflow here does).
 Strip the release workflow and the `update` command has nothing to fetch.
 
 Auth is via the `GITHUB_TOKEN` or `GH_TOKEN` env var and is **optional**:
-
 - **Public repo** — no token needed; anonymous GitHub API calls (60/hour)
   are plenty for occasional updates. A token still helps if users hit the
   rate limit.
@@ -98,7 +97,6 @@ new project under **Settings -> Code security**.
 
 **Dependabot alerts + security updates** (free on both public and private
 repos, no `dependabot.yml` needed):
-
 1. Settings -> Code security -> **Dependabot**.
 2. **Enable** next to **Dependabot alerts** (scans dependencies for known
    CVEs).
@@ -113,7 +111,7 @@ Free plan they're not available at all (button leads to an upsell). If
 the project stays private — skip these.
 
 **Immutable releases** (GA since October 2025): Settings -> scroll to
-**Releases** -> **Enable release immutability**. Once on, every *future*
+**Releases** -> **Enable release immutability**. Once on, every _future_
 release's tags and assets can no longer be modified or deleted — locks in
 the supply-chain guarantee that a published release is what it says it is.
 Existing releases are unaffected; org admins can also default this on for
@@ -128,7 +126,6 @@ repo — konfiguruje się raz per nowy projekt.
 
 GitHub ma dziś dwa miejsca na to samo — **Rulesets** to nowszy, zalecany
 interfejs, klasyczne **Branch protection rules** wciąż działają:
-
 - **Rulesets (nowy interfejs)**: Settings -> **Rules** -> **Rulesets** ->
   **New ruleset** -> **New branch ruleset**. Ustaw target `main` (branch
   targeting criteria -> Include default branch), Enforcement status:
@@ -137,7 +134,6 @@ interfejs, klasyczne **Branch protection rules** wciąż działają:
   rule**, branch name pattern `main`.
 
 W obu miejscach włącz:
-
 - **Require a pull request before merging** (blokuje bezpośredni push do
   `main`).
 - **Require status checks to pass before merging** — zaznacz konkretne
@@ -160,7 +156,6 @@ niezmergowanych.
 ### Dependabot — włączanie/wyłączanie
 
 Settings -> **Code security** -> sekcja **Dependabot**:
-
 - **Dependabot alerts** — przełącznik **Enable**/**Disable**, skanuje
   zależności pod kątem znanych CVE.
 - **Dependabot security updates** — **Enable**/**Disable**, auto-PR z
@@ -179,7 +174,6 @@ repository visibility** -> **Change visibility** -> **Make public**
 ponownego przełączenia z powrotem na private przez ten sam ekran.
 
 Co się odblokowuje/zmienia po przejściu na public:
-
 - **Code scanning (CodeQL)** i **Secret scanning + push protection**
   (Settings -> Code security) stają się darmowe — na private repo z
   planem Free w ogóle nie są dostępne. Włącz oba przez **Enable**/
@@ -195,7 +189,6 @@ Co się odblokowuje/zmienia po przejściu na public:
 ### Migracja Dependabot -> Renovate (przy uwolnieniu jako OSS)
 
 Jeśli projekt po przejściu na public ma używać Renovate zamiast Dependabota:
-
 1. **Wersje zależności**: usuń/nie twórz `.github/dependabot.yml` (Renovate
    przejmuje tę rolę) i zainstaluj GitHub App **Renovate** z Marketplace
    (na org albo tylko na to repo), z plikiem `renovate.json` /
@@ -220,7 +213,6 @@ org Settings -> Repository -> General -> **Releases**.
 
 Settings -> **Secrets and variables** -> **Actions**, dwie osobne
 zakładki:
-
 - **Secrets** -> **New repository secret** — wartości szyfrowane,
   niewidoczne w logach (np. `NODE_AUTH_TOKEN`, patrz howto.md).
 - **Variables** -> **New repository variable** — jawny tekst, widoczny w
@@ -241,7 +233,6 @@ changes per new project, and a fallback worth knowing about.
 
 Each new project needs its own registry identity, not a copy of this
 one's:
-
 - A **package scope/name** on npmjs.com that isn't already taken
   (`@gander-labs/<name>`, see the rename checklist above).
 - Its own Trusted Publisher link on npmjs.com (howto.md step 2), pointing at

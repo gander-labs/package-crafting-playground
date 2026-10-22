@@ -3,7 +3,6 @@
 Publishing to <https://registry.npmjs.org/> uses npm's
 [Trusted Publishing][1]: the release workflow exchanges its GitHub Actions
 OIDC identity for a short-lived npm credential, no stored token required.
-
 - **Registry:** `https://registry.npmjs.org/`
 - **Package:** `@gander-labs/package-crafting-playground`
 - **Workflow:** `.github/workflows/release.yml` (manual, `workflow_dispatch`)
@@ -23,7 +22,6 @@ OIDC identity for a short-lived npm credential, no stored token required.
 
 On <https://www.npmjs.com/>, open the package settings (or, for a first
 publish, set this up right after the first manual `npm publish`):
-
 1. Package → **Settings** → **Trusted Publisher**.
 2. Provider: **GitHub Actions**.
 3. Repository: `gander-labs/package-crafting-playground`.
@@ -60,7 +58,7 @@ to private otherwise.
 ```yaml
 permissions:
   contents: write
-  id-token: write   # lets npm (and JSR) exchange this for a short-lived credential
+  id-token: write # lets npm (and JSR) exchange this for a short-lived credential
 
 steps:
   - name: Setup Node
@@ -96,7 +94,6 @@ runs in, or npm rejects the publish with a provenance validation error.
 3. **Run workflow**.
 
 The job then:
-
 1. runs the `Code` workflow (lint / typecheck / tests),
 2. `Build and verify artifacts` — `bun run build` and smoke-test all three
    outputs by actually running `--version` (sanity check before any version
@@ -131,12 +128,12 @@ and the repo's **Releases** page for the `vX.Y.Z` tag.
 
 `bun run build` produces **all four** outputs:
 
-| Script | Output | Goes to | Consumed as |
-|---|---|---|---|
-| `build:js` | `dist/package-crafting-playground.js` (Node bundle, `#!/usr/bin/env node` banner) | **npm tarball** (`files: ["dist/package-crafting-playground.js"]`, `bin.package-crafting-playground`) | `npx @gander-labs/package-crafting-playground`, `npm i -g` — no Bun needed at runtime |
-| `build:bin:bun` | `dist/package-crafting-playground-bun` (`bun build --compile`, single-platform ELF, ~80 MB, embeds the Bun runtime) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Bun |
-| `build:bin:node` | `dist/package-crafting-playground-node` (`scripts/build-exe-node.mjs`, Node's Single Executable Application feature — Bun is only used as the bundling step, its output embeds the Node runtime, not Bun's) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Node |
-| `build:bin:deno` | `dist/package-crafting-playground-deno` (`deno compile`, ~100 MB, embeds the Deno runtime) | **GitHub Release asset** (`.release-it.json` → `github.assets`) | `update.ts` self-update downloads it when running under Deno |
+| Script           | Output                                                                                                                                                                                                      | Goes to                                                                                               | Consumed as                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `build:js`       | `dist/package-crafting-playground.js` (Node bundle, `#!/usr/bin/env node` banner)                                                                                                                           | **npm tarball** (`files: ["dist/package-crafting-playground.js"]`, `bin.package-crafting-playground`) | `npx @gander-labs/package-crafting-playground`, `npm i -g` — no Bun needed at runtime |
+| `build:bin:bun`  | `dist/package-crafting-playground-bun` (`bun build --compile`, single-platform ELF, ~80 MB, embeds the Bun runtime)                                                                                         | **GitHub Release asset** (`.release-it.json` → `github.assets`)                                       | `update.ts` self-update downloads it when running under Bun                           |
+| `build:bin:node` | `dist/package-crafting-playground-node` (`scripts/build-exe-node.mjs`, Node's Single Executable Application feature — Bun is only used as the bundling step, its output embeds the Node runtime, not Bun's) | **GitHub Release asset** (`.release-it.json` → `github.assets`)                                       | `update.ts` self-update downloads it when running under Node                          |
+| `build:bin:deno` | `dist/package-crafting-playground-deno` (`deno compile`, ~100 MB, embeds the Deno runtime)                                                                                                                  | **GitHub Release asset** (`.release-it.json` → `github.assets`)                                       | `update.ts` self-update downloads it when running under Deno                          |
 
 All three compiled executables are built and shipped side by side so the
 approaches can be compared; `update.ts` picks the matching asset via
@@ -154,7 +151,6 @@ involved — `jsr.json`'s `publish.include` scopes the published files the same
 way `package.json`'s `files` does for npm.
 
 **One-time setup (manual, not something this repo's config can do):**
-
 1. Create the `@gander-labs` scope on <https://jsr.io> if it doesn't exist yet.
 2. Create the `package-crafting-playground` package under that scope.
 3. In the package's **Settings → Publishing**, link it to this GitHub repo and
@@ -176,15 +172,15 @@ npx --yes @gander-labs/package-crafting-playground@latest --version
 
 ## 6. Troubleshooting
 
-| Symptom | Cause / fix |
-|---|---|
-| `npm error the given OIDC or trusted publisher config could not be validated` | Trusted Publisher on npmjs.com doesn't match this repo/workflow filename exactly, or hasn't been linked yet (step 2). |
-| `npm ERR! 403 … not allowed to publish` | The `@gander-labs` scope/package is owned by a different npm account, or the Trusted Publisher link is missing/wrong. Confirm the name is `@gander-labs/package-crafting-playground`. |
-| `EPUBLISHCONFLICT` / `cannot publish over previously published version` | That version already exists. Bump again (run the workflow with `patch`). |
-| `npm error code ENEEDAUTH` in CI | OIDC exchange didn't trigger — check the job has `permissions: id-token: write` and `registry-url` is set on `setup-node`. |
-| `npm error 422 … Error verifying sigstore provenance bundle: … package.json: "repository.url" is "…", expected to match "https://github.com/…"` | `package.json`'s `repository.url` is missing or doesn't match this repo. Trusted publishing always attaches provenance, and npm validates it against `repository`. |
-| `npm error "provenance" is only supported when publishing packages with public access` | Shouldn't happen — `publishConfig.access: "public"` is already set — but if it does, that's the real requirement to check. |
-| Need to publish from somewhere OIDC doesn't reach (local machine, other CI) | Fall back to a classic access token: mint one on npmjs.com, `gh secret set NODE_AUTH_TOKEN`, and add it to the `release-it` step's `env` in `release.yml`. |
+| Symptom                                                                                                                                         | Cause / fix                                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm error the given OIDC or trusted publisher config could not be validated`                                                                   | Trusted Publisher on npmjs.com doesn't match this repo/workflow filename exactly, or hasn't been linked yet (step 2).                                                                  |
+| `npm ERR! 403 … not allowed to publish`                                                                                                         | The `@gander-labs` scope/package is owned by a different npm account, or the Trusted Publisher link is missing/wrong. Confirm the name is `@gander-labs/package-crafting-playground`.  |
+| `EPUBLISHCONFLICT` / `cannot publish over previously published version`                                                                         | That version already exists. Bump again (run the workflow with `patch`).                                                                                                               |
+| `npm error code ENEEDAUTH` in CI                                                                                                                | OIDC exchange didn't trigger — check the job has `permissions: id-token: write` and `registry-url` is set on `setup-node`.                                                             |
+| `npm error 422 … Error verifying sigstore provenance bundle: … package.json: "repository.url" is "…", expected to match "https://github.com/…"` | `package.json`'s `repository.url` is missing or doesn't match this repo. Trusted publishing always attaches provenance, and npm validates it against `repository`.                     |
+| `npm error "provenance" is only supported when publishing packages with public access`                                                          | Shouldn't happen — `publishConfig.access: "public"` is already set — but if it does, that's the real requirement to check.                                                             |
+| Need to publish from somewhere OIDC doesn't reach (local machine, other CI)                                                                     | Fall back to a classic access token: mint one on npmjs.com, `gh secret set NODE_AUTH_TOKEN`, and add it to the `release-it` step's `env` in `release.yml`.                             |
 
 ---
 
