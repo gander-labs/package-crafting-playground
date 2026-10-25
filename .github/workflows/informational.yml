@@ -3,8 +3,6 @@ name: Informational
 # Checks that may fail without blocking development: they report advisories and
 # drift, but are not part of pull request CI. Runs weekly and on demand.
 on:
-  schedule:
-    - cron: "0 7 * * 1"
   workflow_dispatch:
 
 permissions:
